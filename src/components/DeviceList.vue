@@ -2,61 +2,124 @@
   <div class="device-list">
     <h1>Список устройств</h1>
 
-    <!-- Если идёт загрузка - показываем спиннер -->
+    <!-- 1) Если идёт загрузка -->
     <div v-if="loading" class="loading">Загрузка...</div>
 
-    <!-- Если ошибки -->
-    <div v-if="error" class="error">
+    <!-- 2) Если ошибка -->
+    <div v-else-if="error" class="error">
       Произошла ошибка: {{ error }}
     </div>
 
-    <!-- Таблица устройств -->
-    <table v-if="devices.length && !loading && !error">
-      <thead>
-        <tr>
-          <th>ID</th>
-          <th>Название</th>
-          <th>IP</th>
-          <th>Порт</th>
-          <th>Статус</th>
-          <th>Действия</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="device in devices" :key="device.id">
-          <td>{{ device.id }}</td>
-          <td>{{ device.name }}</td>
-          <td>{{ device.ip_address }}</td>
-          <td>{{ device.port_no }}</td>
-          <td>{{ device.status || 'Offline' }}</td>
-          <td>
-            <!-- Пример: редактировать schedule -->
-            <button @click="editSchedule(device)">Schedule</button>
-            <!-- Пример: редактировать weekplan -->
-            <button @click="editWeekPlan(device)">WeekPlan</button>
-            <!-- Добавить другие действия -->
-          </td>
-        </tr>
-      </tbody>
-    </table>
+    <!-- 3) Иначе, когда loading=false и error=null -->
+    <div v-else>
+      <!-- Если есть устройства -->
+      <div v-if="devices.length">
+        <!-- Карточки устройств -->
+        <div v-for="device in devices" :key="device.id" class="device-card">
+          <div class="device-header">
+            <!-- Иконка Font Awesome + название устройства -->
+            <img
+              src="@/assets/hikvision.png"
+              alt="Device Icon"
+              class="device-icon"
+            />
+            <h2 class="device-name">{{ device.name }}</h2>
+            <!-- Кнопка "Расписания" - при клике меняем showSchedules -->
+            <button class="dropdown-btn" @click="device.showSchedules = !device.showSchedules">
+              Расписания
+              <!-- Иконка ▼ или ▶ в зависимости от состояния showSchedules -->
+              <span v-if="device.showSchedules"> ˃ </span>
+              <span v-else> ▼ </span>
+            </button>
+          </div>
 
-    <!-- Если список пуст, но нет загрузки/ошибки -->
-    <p v-else-if="!loading && !error">
-      Нет доступных устройств.
-    </p>
+          <!-- Блок расписаний: показывать только если device.showSchedules=true -->
+          <transition name="fade">
+            <div v-if="device.showSchedules" class="schedules-container">
+              <!-- 3 шаблона расписаний: scheduleId = 1, 2, 3 -->
+              <div
+                v-for="scheduleId in [1, 2, 3]"
+                :key="scheduleId"
+                class="schedule-template"
+              >
+                <h3>Расписание №{{ scheduleId }}</h3>
+
+                <div v-if="device.schedules && device.schedules[scheduleId]">
+                  <!-- ON/OFF toggle вместо enable -->
+                  <div class="enable-toggle">
+                    <label class="switch">
+                      <input 
+                        type="checkbox" 
+                        :checked="device.schedules[scheduleId].enable"
+                        @change="toggleScheduleEnable(device, scheduleId, $event.target.checked)" 
+                      />
+                      <span class="slider round"></span>
+                    </label>
+                    <span>{{ device.schedules[scheduleId].enable ? 'Включено' : 'Выключено' }}</span>
+                  </div>
+
+                  <!-- Выводим дни недели (только id=1) -->
+                  <div class="weekplan-days" v-if="device.schedules[scheduleId].weekPlan">
+                    <div
+                      v-for="(wpDay, idx) in device.schedules[scheduleId].weekPlan"
+                      :key="idx"
+                      class="weekplan-day"
+                    >
+                      <strong>{{ wpDay.week }}:</strong>
+                      <span v-if="wpDay.enable">
+                        {{ wpDay.TimeSegment.beginTime }} - {{ wpDay.TimeSegment.endTime }}
+                      </span>
+                      <span v-else>Выключено</span>
+                    </div>
+                  </div>
+
+                  <!-- Кнопка редактировать именно WeekPlan -->
+                  <button class="edit-btn" @click="editSchedule(device, scheduleId)">
+                    Изменить
+                  </button>
+                </div>
+                <div v-else>
+                  <em>Данные по scheduleId={{ scheduleId }} загружаются...</em>
+                </div>
+              </div>
+            </div>
+          </transition>
+        </div>
+      </div>
+      <!-- Иначе, если устройств нет, но нет загрузки/ошибки -->
+      <p v-else>
+        Нет доступных устройств.
+      </p>
+    </div>
+
+    <!-- Модалка (ScheduleEditModal) -->
+    <ScheduleEditModal
+      v-if="isScheduleModalOpen"
+      :device="selectedDevice"
+      :scheduleId="selectedScheduleId"
+      @close="isScheduleModalOpen = false"
+      @saved="onWeekPlanSaved"
+    />
   </div>
 </template>
 
 <script>
 import api from '@/api'
+import ScheduleEditModal from '@/components/ScheduleEditModal.vue' // <-- Импортируем модалку
 
 export default {
   name: 'DeviceList',
+  components: { ScheduleEditModal },
   data() {
     return {
       devices: [],
       loading: false,
-      error: null
+      error: null,
+
+      // Для модалки редактирования
+      isScheduleModalOpen: false,
+      selectedDevice: null,
+      selectedScheduleId: null
     }
   },
   mounted() {
@@ -68,14 +131,16 @@ export default {
       this.error = null
       api.get('/api/devices/')
         .then((response) => {
-          this.devices = response.data
-          // Если бекенд не возвращает device.status, можно сделать отдельные запросы /ping:
-          /*
+          this.devices = response.data || []
+
+          // Для визуального управления dropdown'ом - добавим showSchedules=false
           this.devices.forEach((dev) => {
-             dev.status = 'Offline'
-             // Или отправить запрос /api/devices/{dev.id}/ping — при успехе -> 'Online'
+            dev.schedules = {}
+            dev.showSchedules = false
           })
-          */
+
+          // Загрузим данные schedule/weekPlan
+          this.loadSchedulesForAllDevices()
         })
         .catch((err) => {
           this.error = err.response?.data?.detail || err.message
@@ -84,23 +149,105 @@ export default {
           this.loading = false
         })
     },
-    editSchedule(device) {
-      // TODO: открыть модалку или перейти на отдельный роут
-      alert(`Открыть редактирование schedule для устройства ID=${device.id}`)
+    loadSchedulesForAllDevices() {
+      this.devices.forEach((device) => {
+        [1, 2, 3].forEach((scheduleId) => {
+          this.fetchSchedule(device, scheduleId)
+        })
+      })
     },
-    editWeekPlan(device) {
-      // TODO: аналогично
-      alert(`Открыть редактирование weekplan для устройства ID=${device.id}`)
+    fetchSchedule(device, scheduleId) {
+      api
+        .get(`/api/devices/${device.id}/schedule/${scheduleId}/`)
+        .then((resp) => {
+          const schedData = resp.data.UserRightPlanTemplate || {}
+          device.schedules[scheduleId] = {
+            enable: schedData.enable,
+            templateName: schedData.templateName,
+            weekPlanNo: schedData.weekPlanNo,
+            holidayGroupNo: schedData.holidayGroupNo,
+            weekPlan: []
+          }
+          if (schedData.weekPlanNo) {
+            this.fetchWeekPlan(device, scheduleId, schedData.weekPlanNo)
+          }
+        })
+        .catch((err) => {
+          console.error(err)
+          device.schedules[scheduleId] = {
+            enable: false, templateName: '', weekPlanNo: null, holidayGroupNo: '',
+            weekPlan: []
+          }
+        })
+    },
+    fetchWeekPlan(device, scheduleId, weekPlanNo) {
+      api
+        .get(`/api/devices/${device.id}/weekplan/${weekPlanNo}/`)
+        .then((resp) => {
+          const weekPlanData = resp.data.UserRightWeekPlanCfg
+          if (!weekPlanData) return
+          const filteredDays = (weekPlanData.WeekPlanCfg || []).filter(i => i.id === 1)
+          device.schedules[scheduleId].weekPlan = filteredDays
+        })
+        .catch((err) => {
+          console.error(err)
+          device.schedules[scheduleId].weekPlan = []
+        })
+    },
+
+    toggleScheduleEnable(device, scheduleId, newValue) {
+      // 1. Обновим локально
+      device.schedules[scheduleId].enable = newValue
+
+      // 2. Сформируем payload для PUT
+      const { enable, templateName, weekPlanNo, holidayGroupNo } = device.schedules[scheduleId]
+      const payload = {
+        UserRightPlanTemplate: {
+          enable,          // true/false
+          templateName,    // например: "New Template #2"
+          weekPlanNo,      // (int) номер weekplan, например 1
+          holidayGroupNo   // (string) например "1,3,5" или ""
+        }
+      }
+
+      // 3. Отправляем PUT на /api/devices/{device.id}/schedule/{scheduleId}/
+      api.put(`/api/devices/${device.id}/schedule/${scheduleId}/`, payload)
+        .then((resp) => {
+          console.log('Schedule updated successfully', resp.data)
+        })
+        .catch((err) => {
+          console.error('Error updating schedule', err)
+          // Откатим локальное значение, если нужно
+          device.schedules[scheduleId].enable = !newValue
+        })
+    },
+
+    // Важно: теперь эта функция открывает модалку для редактирования weekPlan
+    editSchedule(device, scheduleId) {
+      this.selectedDevice = device
+      this.selectedScheduleId = scheduleId
+      this.isScheduleModalOpen = true
+    },
+
+    // Когда в модалке нажали "Сохранить" - из модалки придёт событие @saved
+    onWeekPlanSaved({ deviceId, scheduleId, updatedWeekPlan }) {
+      // Обновим локальные данные (device.schedules[scheduleId].weekPlan)
+      // Найдём нужный device, т.к. в this.selectedDevice может быть старый объект
+      const dev = this.devices.find(d => d.id === deviceId)
+      if (dev && dev.schedules[scheduleId]) {
+        dev.schedules[scheduleId].weekPlan = updatedWeekPlan
+      }
     }
   }
 }
 </script>
 
+
+
 <style scoped>
 .device-list {
-  background-color: #fff;
   padding: 16px;
-  border-radius: 8px;
+  background-color: #f9f9f9;
 }
 
 .loading {
@@ -113,23 +260,140 @@ export default {
   margin-bottom: 10px;
 }
 
-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 16px;
-}
-thead {
-  background-color: #f3f3f3;
-}
-th, td {
-  padding: 8px;
+/* Карточка устройства */
+.device-card {
+  background: #fff;
   border: 1px solid #ccc;
-  text-align: left;
+  margin-bottom: 16px;
+  padding: 12px;
+  border-radius: 6px;
 }
-th {
-  font-weight: bold;
+.device-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
 }
-button {
-  margin-right: 8px;
+.device-icon {
+  width: 80px;
+  height: 40px;
+  font-size: 1.4em;
+  margin-right: 2px;
+  color: #42b983; /* Vue-green цвет, к примеру */
+}
+
+
+.device-name {
+  margin: 0;
+}
+
+/* Кнопка dropdown */
+.dropdown-btn {
+  margin-left: auto;
+  background: #ececec;
+  border: 1px solid #ccc;
+  padding: 6px 10px;
+  cursor: pointer;
+  border-radius: 4px;
+}
+.dropdown-btn:hover {
+  background: #ddd;
+}
+
+/* Обёртка для всех расписаний */
+.schedules-container {
+  margin-top: 12px;
+  padding: 8px;
+  border-top: 1px dashed #ccc;
+}
+
+/* Каждое расписание */
+.schedule-template {
+  background: #fafafa;
+  border: 1px dotted #ccc;
+  padding: 8px;
+  margin-bottom: 8px;
+  border-radius: 4px;
+}
+.schedule-template h3 {
+  margin-top: 0;
+}
+
+/* Тумблер (on/off switch) */
+.enable-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+/* 
+  .switch и .slider — классический CSS-приём для стилизации чекбокса 
+  пример: https://www.w3schools.com/howto/howto_css_switch.asp 
+*/
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 38px;
+  height: 22px;
+}
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: #ccc;
+  transition: .4s;
+  border-radius: 20px;
+}
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 16px; width: 16px;
+  left: 3px; bottom: 3px;
+  background-color: white;
+  transition: .4s;
+  border-radius: 50%;
+}
+input:checked + .slider {
+  background-color: #42b983; /* зеленый при on */
+}
+input:focus + .slider {
+  box-shadow: 0 0 1px #42b983;
+}
+input:checked + .slider:before {
+  transform: translateX(16px);
+}
+
+/* Кнопка "Изменить" */
+.edit-btn {
+  margin-top: 8px;
+  padding: 4px 8px;
+}
+
+/* Дни недели */
+.weekplan-days {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.weekplan-day {
+  background: #eee;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+/* Плавная анимация при появлении/исчезновении (transition "fade") */
+.fade-enter-active, .fade-leave-active {
+  transition: opacity .3s;
+}
+.fade-enter, .fade-leave-to {
+  opacity: 0;
 }
 </style>
+
+<!-- 1 1 1 -->

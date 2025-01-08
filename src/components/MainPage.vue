@@ -46,13 +46,10 @@
       </section>
 
       <section v-else-if="activeTab === 'persons'">
-        <h1>Список персон</h1>
-        <p>Здесь будет функционал управления персонами (students).</p>
-        <!-- TODO: компонент PersonList.vue -->
+        <PersonList />
       </section>
 
       <section v-else-if="activeTab === 'report'">
-        <h1>BI Отчёт</h1>
         <ReportBI />
       </section>
 
@@ -68,6 +65,7 @@
 <script>
 import DeviceList from '@/components/DeviceList.vue'
 import ReportBI from './ReportBI.vue';
+import PersonList from './PersonList.vue';
 
 export default {
   name: 'MainPage',
@@ -83,7 +81,7 @@ export default {
     }
   },
   components: {
-    DeviceList,ReportBI
+    DeviceList,ReportBI, PersonList
   },
   data() {
     return {
