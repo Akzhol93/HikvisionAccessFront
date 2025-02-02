@@ -16,21 +16,20 @@
       <div v-if="devices.length">
         <!-- Карточки устройств -->
         <div v-for="device in devices" :key="device.id" class="device-card">
-          <div class="device-header">
-            <!-- Иконка Font Awesome + название устройства -->
+          <!-- Блок .device-header стал кликабельным -->
+          <div class="device-header" @click="device.showSchedules = !device.showSchedules">
             <img
               src="@/assets/hikvision.png"
               alt="Device Icon"
               class="device-icon"
             />
             <h2 class="device-name">{{ device.name }}</h2>
-            <!-- Кнопка "Расписания" - при клике меняем showSchedules -->
-            <button class="dropdown-btn" @click="device.showSchedules = !device.showSchedules">
-              Расписания
-              <!-- Иконка ▼ или ▶ в зависимости от состояния showSchedules -->
-              <span v-if="device.showSchedules"> ˃ </span>
-              <span v-else> ▼ </span>
-            </button>
+            
+            <!-- Убираем кнопку, вместо неё показываем стрелочку справа -->
+            <span class="expand-arrow">
+              <span v-if="device.showSchedules">˃</span>
+              <span v-else>▼</span>
+            </span>
           </div>
 
           <!-- Блок расписаний: показывать только если device.showSchedules=true -->
@@ -73,7 +72,7 @@
                     </div>
                   </div>
 
-                  <!-- Кнопка редактировать именно WeekPlan -->
+                  <!-- Кнопка "Изменить" -->
                   <button class="edit-btn" @click="editSchedule(device, scheduleId)">
                     Изменить
                   </button>
@@ -203,10 +202,10 @@ export default {
       const { enable, templateName, weekPlanNo, holidayGroupNo } = device.schedules[scheduleId]
       const payload = {
         UserRightPlanTemplate: {
-          enable,          // true/false
-          templateName,    // например: "New Template #2"
-          weekPlanNo,      // (int) номер weekplan, например 1
-          holidayGroupNo   // (string) например "1,3,5" или ""
+          enable,          
+          templateName,
+          weekPlanNo,      
+          holidayGroupNo   
         }
       }
 
@@ -222,17 +221,15 @@ export default {
         })
     },
 
-    // Важно: теперь эта функция открывает модалку для редактирования weekPlan
+    // Открываем модалку для редактирования weekPlan
     editSchedule(device, scheduleId) {
       this.selectedDevice = device
       this.selectedScheduleId = scheduleId
       this.isScheduleModalOpen = true
     },
 
-    // Когда в модалке нажали "Сохранить" - из модалки придёт событие @saved
+    // Когда в модалке нажали "Сохранить"
     onWeekPlanSaved({ deviceId, scheduleId, updatedWeekPlan }) {
-      // Обновим локальные данные (device.schedules[scheduleId].weekPlan)
-      // Найдём нужный device, т.к. в this.selectedDevice может быть старый объект
       const dev = this.devices.find(d => d.id === deviceId)
       if (dev && dev.schedules[scheduleId]) {
         dev.schedules[scheduleId].weekPlan = updatedWeekPlan
@@ -241,8 +238,6 @@ export default {
   }
 }
 </script>
-
-
 
 <style scoped>
 .device-list {
@@ -272,31 +267,22 @@ export default {
   display: flex;
   align-items: center;
   margin-bottom: 8px;
+  cursor: pointer; /* Чтобы курсор менялся на pointer */
 }
 .device-icon {
   width: 80px;
   height: 40px;
-  font-size: 1.4em;
-  margin-right: 2px;
-  color: #42b983; /* Vue-green цвет, к примеру */
+  margin-right: 8px;
 }
-
 
 .device-name {
   margin: 0;
+  flex: 1; /* Чтобы заголовок занимал всё доступное пространство */
 }
 
-/* Кнопка dropdown */
-.dropdown-btn {
-  margin-left: auto;
-  background: #ececec;
-  border: 1px solid #ccc;
-  padding: 6px 10px;
-  cursor: pointer;
-  border-radius: 4px;
-}
-.dropdown-btn:hover {
-  background: #ddd;
+.expand-arrow {
+  font-weight: bold;
+  margin-right: 8px;
 }
 
 /* Обёртка для всех расписаний */
@@ -326,10 +312,6 @@ export default {
   margin-bottom: 8px;
 }
 
-/* 
-  .switch и .slider — классический CSS-приём для стилизации чекбокса 
-  пример: https://www.w3schools.com/howto/howto_css_switch.asp 
-*/
 .switch {
   position: relative;
   display: inline-block;
@@ -395,5 +377,3 @@ input:checked + .slider:before {
   opacity: 0;
 }
 </style>
-
-<!-- 1 1 1 -->

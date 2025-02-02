@@ -17,11 +17,13 @@
               <input
                 type="time"
                 v-model="item.TimeSegment.beginTime"
+                lang="en-GB"
               />
               до:
               <input
                 type="time"
                 v-model="item.TimeSegment.endTime"
+                lang="en-GB"
               />
             </span>
           </label>
