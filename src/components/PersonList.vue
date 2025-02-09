@@ -2,6 +2,11 @@
   <div>
     <h2>Список персон</h2>
 
+    <!-- (Кнопка Добавить) -->
+    <button @click="showAddModal = true" class="add-person-btn">
+      + Добавить
+    </button>
+
     <!-- (1) Выбор устройства -->
     <div class="device-selector">
       <label>Выберите устройство:</label>
@@ -22,25 +27,25 @@
       <thead>
         <tr>
           <th>Фото</th>
-          <th>employeeNo</th>
-          <th>name</th>
-          <th>userType</th>
+          <th>ИИН</th>
+          <th>Имя</th>
+          <th>Тип пользователя</th>
           <th></th> <!-- Под экшен-меню (три точки) -->
         </tr>
       </thead>
       <tbody>
         <tr v-for="(person, index) in persons" :key="index">
-          <!-- Фото (лицо) -->
+          <!-- Фото -->
           <td>
-            <!-- Если уже загружена faceImageData – показываем миниатюру -->
+            <!-- Если уже загружено фото (faceImageData) – показываем миниатюру -->
             <img
               v-if="person.faceImageData"
               :src="person.faceImageData"
-              alt="Face"
+              alt="Фото"
               width="50"
             />
-            <!-- Иначе кнопка "Показать лицо" -->
-            <button v-else @click="loadFace(person)">Показать лицо</button>
+            <!-- Иначе кнопка "Показать фото" -->
+            <button v-else @click="loadPhoto(person)">Показать фото</button>
           </td>
 
           <!-- Основные поля персоны -->
@@ -69,50 +74,14 @@
       <p>Нет персон (или не выбрано устройство).</p>
     </div>
 
-    <!-- (3) Форма для создания новой персоны -->
-    <div class="new-person-form">
-      <h3>Добавить новую персону</h3>
-      <form @submit.prevent="createPerson">
-        <div>
-          <label>employeeNo:</label>
-          <input v-model="newPerson.employeeNo" required />
-        </div>
-        <div>
-          <label>name:</label>
-          <input v-model="newPerson.name" required />
-        </div>
-        <div>
-          <label>userType:</label>
-          <select v-model="newPerson.userType">
-            <option value="normal">normal</option>
-            <option value="visitor">visitor</option>
-            <option value="blackList">blackList</option>
-            <option value="maintenance">maintenance</option>
-          </select>
-        </div>
-        <!-- Поле Valid (при необходимости) -->
-        <div>
-          <label>Valid с:</label>
-          <input
-            type="datetime-local"
-            v-model="newPerson.Valid.beginTime"
-            step="1"
-          />
-        </div>
-        <div>
-          <label>Valid по:</label>
-          <input
-            type="datetime-local"
-            v-model="newPerson.Valid.endTime"
-            step="1"
-          />
-        </div>
+    <!-- (3) Модальное окно для добавления НОВОЙ персоны -->
+    <AddPersonModal
+      v-if="showAddModal"
+      @close="showAddModal = false"
+      @personCreated="handlePersonCreated"
+    />
 
-        <button type="submit">Создать</button>
-      </form>
-    </div>
-
-    <!-- (4) Модальное окно / форма для редактирования персоны (отдельный компонент) -->
+    <!-- (4) Модальное окно / форма для редактирования персоны -->
     <PersonEditModal
       v-if="editModalVisible"
       :device-id="selectedDevice"
@@ -126,50 +95,31 @@
 <script>
 import axios from 'axios'
 import PersonEditModal from './PersonEditModal.vue'
+import AddPersonModal from './AddPersonModal.vue'
 
 export default {
   name: 'PersonList',
-  components: { PersonEditModal },
+  components: { PersonEditModal, AddPersonModal },
   data() {
     return {
-      // Доступные устройства
       devices: [],
-      // ID выбранного устройства
       selectedDevice: null,
-
-      // Список персон (с выбранного устройства)
       persons: [],
-
-      // Новая персона для создания
-      newPerson: {
-        employeeNo: '',
-        name: '',
-        userType: 'normal',
-        Valid: {
-          beginTime: '2025-01-01T00:00',
-          endTime: '2035-01-01T00:00'
-        }
-      },
-
-      // Персона, которую передаем в модалку для редактирования
       editedPerson: null,
       editModalVisible: false,
+      expandedRow: null,
 
-      // Какой индекс строки «раскрыт» для кнопок «Редактировать/Удалить»
-      expandedRow: null
+      showAddModal: false,  // управляет показом AddPersonModal
     }
   },
   mounted() {
-    // При монтировании сразу получаем устройства
     this.fetchDevices()
   },
   methods: {
-    // (A) Получить список устройств
     async fetchDevices() {
       try {
         const response = await axios.get('/api/devices/')
         this.devices = response.data
-        // Если нужно, можно автоматически выбрать первое устройство
         if (this.devices.length > 0) {
           this.selectedDevice = this.devices[0].id
           this.fetchPersons()
@@ -178,129 +128,78 @@ export default {
         console.error('Ошибка при загрузке устройств:', error)
       }
     },
-
-    // (B) Получить список персон для выбранного устройства
     async fetchPersons() {
       if (!this.selectedDevice) return
-      this.expandedRow = null  // свернуть меню «три точки»
+      this.expandedRow = null
       try {
-        const response = await axios.get(
-          `/api/devices/${this.selectedDevice}/persons/`
-        )
-        // Предполагается, что вернется массив персон.
-        // Сразу добавим поле faceImageData = null, чтобы потом хранить фото
+        const response = await axios.get(`/api/devices/${this.selectedDevice}/persons/`)
+        // добавим поле "faceImageData" и "hasFaceOnDevice"
         this.persons = response.data.map(p => ({
           ...p,
-          faceImageData: null
+          faceImageData: p.faceImageData || null,
+          hasFaceOnDevice: !!p.faceImageData
         }))
       } catch (error) {
         console.error('Ошибка при загрузке персон:', error)
       }
     },
 
-    // (C) Создать новую персону
-    async createPerson() {
-      if (!this.selectedDevice) return
-      try {
-        await axios.post(
-          `/api/devices/${this.selectedDevice}/persons/`,
-          this.newPerson
-        )
-        // Обновляем список
-        await this.fetchPersons()
-        // Сбрасываем форму
-        this.resetNewPersonForm()
-      } catch (error) {
-        console.error('Ошибка при создании персоны:', error)
-      }
-    },
-
-    // Сброс формы создания
-    resetNewPersonForm() {
-      this.newPerson.employeeNo = ''
-      this.newPerson.name = ''
-      this.newPerson.userType = 'normal'
-      this.newPerson.Valid.beginTime = '2025-01-01T00:00'
-      this.newPerson.Valid.endTime = '2035-01-01T00:00'
-    },
-
-    // (D) Открыть модалку редактирования
-    openEditModal(person) {
-      this.expandedRow = null // Скрыть меню
-      // Клонируем данные персоны
-      this.editedPerson = JSON.parse(JSON.stringify(person))
-      this.editModalVisible = true
-    },
-
-    // (E) Обработать сохранение из модалки
-    handlePersonSaved() {
-      // Закрываем модалку
-      this.editModalVisible = false
-      // Обновляем список (чтобы отобразить новые данные)
+    // (A) Обработчик когда новая персона создана в AddPersonModal
+    handlePersonCreated() {
+      this.showAddModal = false
+      // Обновим список персон, если нужно
       this.fetchPersons()
     },
 
-    // (G) Удалить персону
+    openEditModal(person) {
+      this.expandedRow = null
+      // Копия данных + флаг наличия фото
+      const copy = JSON.parse(JSON.stringify(person))
+      copy.hasFaceOnDevice = person.hasFaceOnDevice
+      this.editedPerson = copy
+      this.editModalVisible = true
+    },
+    handlePersonSaved() {
+      this.editModalVisible = false
+      this.fetchPersons()
+    },
+
     async deletePerson(employeeNo) {
       if (!this.selectedDevice) return
       this.expandedRow = null
       try {
-        await axios.delete(
-          `/api/devices/${this.selectedDevice}/persons/${employeeNo}/`
-        )
+        await axios.delete(`/api/devices/${this.selectedDevice}/persons/${employeeNo}/`)
         this.fetchPersons()
       } catch (error) {
         console.error('Ошибка при удалении персоны:', error)
       }
     },
 
-    // (H) Загрузить лицо (изображение) для конкретной персоны
-    async loadFace(person) {
+    async loadPhoto(person) {
       if (!this.selectedDevice || !person.employeeNo) return
       try {
-        // Сначала получаем JSON от /face/{employeeNo} — там есть "faceURL".
         const responseFace = await axios.get(
           `/api/devices/${this.selectedDevice}/persons/${person.employeeNo}/face/${person.employeeNo}`,
-          {
-            params: {
-              face_lib_type: 'blackFD',
-              fdid: '1'
-            }
-          }
+          { params: { face_lib_type: 'blackFD', fdid: '1' } }
         )
-
         const faceData = responseFace.data
         if (faceData.numOfMatches > 0 && faceData.MatchList && faceData.MatchList.length > 0) {
           const match = faceData.MatchList[0]
           if (match.faceURL) {
-            // (1) Запрашиваем через action "fetch_image", который сделает
-            // HTTP Digest авторизацию и вернёт base64
             const proxyResp = await axios.get(
               `/api/devices/${this.selectedDevice}/persons/${person.employeeNo}/face/${person.employeeNo}/fetch_image`,
-              {
-                params: {
-                  face_url: match.faceURL
-                }
-              }
+              { params: { face_url: match.faceURL } }
             )
-
             if (proxyResp.data.image_data) {
               person.faceImageData = 'data:image/jpeg;base64,' + proxyResp.data.image_data
-            } else {
-              console.warn('Не удалось получить image_data:', proxyResp.data.error)
+              person.hasFaceOnDevice = true
             }
-          } else {
-            console.warn('В объекте match нет поля faceURL')
           }
-        } else {
-          console.warn('Не найдено совпадений или пустой MatchList')
         }
       } catch (error) {
-        console.error('Ошибка при загрузке лица:', error)
+        console.error('Ошибка при загрузке фото:', error)
       }
     },
-
-    // Показать/спрятать меню "три точки" (expandedRow)
     toggleActions(rowIndex) {
       this.expandedRow = this.expandedRow === rowIndex ? null : rowIndex
     }
@@ -311,6 +210,13 @@ export default {
 <style scoped>
 .device-selector {
   margin-bottom: 1rem;
+}
+
+/* Можно стилизовать кнопку Добавить */
+.add-person-btn {
+  margin-bottom: 1rem;
+  padding: 0.4rem 0.8rem;
+  cursor: pointer;
 }
 
 .person-table {
@@ -327,7 +233,7 @@ export default {
 }
 
 .actions-td {
-  position: relative; /* чтобы позиционировать dropdown */
+  position: relative;
 }
 
 .actions-wrapper {
@@ -365,23 +271,5 @@ export default {
 
 .dropdown-content button:hover {
   background: #f0f0f0;
-}
-
-.new-person-form,
-.edit-modal {
-  margin-top: 2rem;
-  padding: 1rem;
-  background: #f7f7f7;
-  border-radius: 4px;
-}
-
-.edit-modal {
-  border: 2px solid #888;
-}
-
-.refresh-btn {
-  margin-left: 12px;
-  padding: 0.5rem 1rem;
-  cursor: pointer;
 }
 </style>
