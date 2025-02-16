@@ -4,29 +4,48 @@
       <h2>Добавить новую персону</h2>
       <form @submit.prevent="onSubmit">
 
-        <!-- Если userIsParent = true => выбрать организацию -->
-        <div class="form-row" v-if="userIsParent">
-          <label>Организация:</label>
-          <select v-model="selectedOrgId" @change="fetchDevicesForOrg">
-            <option disabled value="">-- выберите --</option>
-            <option 
-              v-for="org in organizations" 
-              :key="org.id" 
-              :value="org.id"
+        <!-- Если пользователь из parent org -->
+        <div v-if="userIsParent">
+          <div class="form-row">
+            <label>Организация:</label>
+            <select
+              v-model="selectedOrgId"
+              @change="fetchDevicesForOrg"
             >
-              {{ org.name }}
-            </option>
-          </select>
+              <option disabled value="">-- выберите --</option>
+              <option
+                v-for="org in organizations"
+                :key="org.id"
+                :value="org.id"
+              >
+                {{ org.name }}
+              </option>
+            </select>
+          </div>
         </div>
 
-        <!-- Выбор устройства (список, получаем для выбранной организации) -->
+        <!-- Если пользователь из child org -->
+        <div v-else>
+          <div class="form-row">
+            <label>Организация:</label>
+            <!-- Можно сделать input disabled, 
+                 или select с 1 опцией в disabled состоянии -->
+            <input
+              type="text"
+              :value="childOrgName"
+              readonly
+            />
+          </div>
+        </div>
+
+        <!-- Список устройств (общий для обоих случаев) -->
         <div class="form-row">
           <label>Устройство:</label>
           <select v-model="selectedDeviceId">
             <option disabled value="">-- выберите --</option>
-            <option 
-              v-for="dev in devices" 
-              :key="dev.id" 
+            <option
+              v-for="dev in devices"
+              :key="dev.id"
               :value="dev.id"
             >
               {{ dev.name }}
@@ -57,8 +76,8 @@
         <div class="form-row">
           <label>Доступ с:</label>
           <input 
-            type="datetime-local" 
-            v-model="form.Valid.beginTime" 
+            type="datetime-local"
+            v-model="form.Valid.beginTime"
             step="1"
           />
         </div>
@@ -66,8 +85,8 @@
         <div class="form-row">
           <label>Доступ по:</label>
           <input 
-            type="datetime-local" 
-            v-model="form.Valid.endTime" 
+            type="datetime-local"
+            v-model="form.Valid.endTime"
             step="1"
           />
         </div>
@@ -76,15 +95,15 @@
         <div class="form-row">
           <label>Фото лица:</label>
           <div class="file-input-wrapper">
-            <input 
+            <input
               ref="fileInput"
-              type="file" 
+              type="file"
               accept="image/*"
-              @change="onFileChange" 
+              @change="onFileChange"
             />
             <!-- Если файл выбран, показываем имя и иконку для сброса -->
-            <div 
-              v-if="faceFile" 
+            <div
+              v-if="faceFile"
               class="selected-file-info"
             >
               <span class="file-name">{{ faceFile.name }}</span>
@@ -114,15 +133,13 @@ export default {
   name: 'AddPersonModal',
   data() {
     return {
-      // Предположим, что API вернёт true/false (например, /api/user_info/)
-      userIsParent: false,
+      userIsParent: false,     // Определим после запроса user_info
+      childOrgName: '',        // Название организации, если пользователь из дочерней
 
-      // Список организаций (если userIsParent=true)
-      organizations: [],
-      selectedOrgId: '',
+      organizations: [],       // Дочерние организации для parent
+      selectedOrgId: '',       // Выбранная организация (только если userIsParent)
 
-      // Список устройств для выбранной организации
-      devices: [],
+      devices: [],             // Устройства для выбранной/текущей организации
       selectedDeviceId: '',
 
       form: {
@@ -130,70 +147,77 @@ export default {
         name: '',
         userType: 'normal',
         Valid: {
+          enable: true,
           beginTime: '2025-01-01T00:00',
           endTime: '2035-01-01T00:00'
         }
       },
       faceFile: null,
-
-      // Иконка-мусорка
       trashIconUrl: 'https://cdn-icons-png.flaticon.com/512/3096/3096673.png',
     }
   },
   async mounted() {
-    // (A) Выясняем, является ли пользователь "parent" или нет
-    await this.checkUserIsParent()
+    // 1) Узнаём данные текущего пользователя
+    const userInfo = await this.getCurrentUserInfo()
+    if (!userInfo || !userInfo.organization) {
+      // Если не нашли userInfo / organization
+      console.error('Не удалось получить данные пользователя или организации')
+      return
+    }
 
-    // (B) Если parent — грузим список организаций
-    //     Иначе — сразу ставим selectedOrgId = org пользователя + fetchDevicesForOrg()
+    // 2) Проверяем, главная ли организация => userIsParent
+    this.userIsParent = !!userInfo.organization.is_main
+
+    // 3) Если parent org:
+    //    - Загружаем список ТОЛЬКО дочерних организаций
+    //      (например /api/organizations/?parent_id=xxx)
     if (this.userIsParent) {
-      await this.fetchOrganizations()
-    } else {
-      // Если не parent, можно вызвать API "/api/user_info/", 
-      // чтобы узнать organization.id пользователя
-      const userInfo = await this.getCurrentUserInfo()
-      if (userInfo && userInfo.organization) {
-        this.selectedOrgId = userInfo.organization.id
-      }
-      // И сразу получаем устройства для этой org
+      await this.fetchChildOrganizations(userInfo.organization.id)
+    } 
+    else {
+      // Если child org:
+      // - Запоминаем название
+      // - Выставляем selectedOrgId = id этой организации
+      // - Подгружаем устройства
+      this.childOrgName = userInfo.organization.name
+      this.selectedOrgId = userInfo.organization.id
       await this.fetchDevicesForOrg()
     }
   },
   methods: {
-    async checkUserIsParent() {
-      try {
-        const resp = await axios.get('/api/user_info/')
-        // Допустим, бэкенд возвращает { "is_parent": true, "organization": {...} }
-        this.userIsParent = resp.data.is_parent || false
-      } catch (error) {
-        console.error('Ошибка проверки is_parent:', error)
-        this.userIsParent = false
-      }
-    },
-
+    /**
+     * Запрашиваем текущего пользователя:
+     * должен вернуться JSON вида { id, username, organization: {...} }
+     * где organization.is_main = true/false
+     */
     async getCurrentUserInfo() {
-      // Вы можете хранить это в Vuex или где-то ещё, но для примера — 
-      // сделаем прямой запрос
       try {
         const resp = await axios.get('/api/user_info/')
         return resp.data
       } catch (error) {
-        console.error(error)
+        console.error('Ошибка getCurrentUserInfo():', error)
         return null
       }
     },
 
-    async fetchOrganizations() {
-      // Допустим у вас есть эндпоинт /api/organizations/ 
-      // который возвращает все организации
+    /**
+     * Запрашиваем дочерние организации для parent org
+     * (Например /api/organizations/?parent_id=XX)
+     */
+    async fetchChildOrganizations(parentId) {
       try {
-        const resp = await axios.get('/api/organizations/')
+        const resp = await axios.get('/api/organizations/', {
+          params: { parent_id: parentId }
+        })
         this.organizations = resp.data
       } catch (error) {
-        console.error('Ошибка при загрузке организаций:', error)
+        console.error('Ошибка при загрузке дочерних организаций:', error)
       }
     },
 
+    /**
+     * Загружаем устройства, принадлежащие организации selectedOrgId
+     */
     async fetchDevicesForOrg() {
       if (!this.selectedOrgId) {
         this.devices = []
@@ -201,14 +225,11 @@ export default {
         return
       }
       try {
-        // Предположим, что у вас есть эндпоинт /api/devices/?organization_id=xxx
-        // Или вы могли бы сделать отдельный эндпоинт. 
-        // Либо просто получить все устройства /api/devices/
-        // и отфильтровать на фронте, если в Device есть поле organization
         const resp = await axios.get('/api/devices/', {
           params: { organization_id: this.selectedOrgId }
         })
         this.devices = resp.data
+        // Если есть хотя бы одно устройство, выберем первое
         if (this.devices.length > 0) {
           this.selectedDeviceId = this.devices[0].id
         } else {
@@ -236,6 +257,13 @@ export default {
     },
 
     async onSubmit() {
+       // 1) Если нужно, добавить секунды:
+      if (this.form.Valid.beginTime.length === 16) {
+        this.form.Valid.beginTime += ':00'
+      }
+      if (this.form.Valid.endTime.length === 16) {
+        this.form.Valid.endTime += ':00'
+      }
       if (!this.selectedDeviceId) {
         alert('Выберите устройство!')
         return
@@ -249,7 +277,7 @@ export default {
         )
         console.log('Person created:', createResp.data)
 
-        // Успешно создана персона. Если есть фото => делаем PUT
+        // (2) Если есть фото => делаем PUT
         if (this.faceFile) {
           const employeeNo = this.form.employeeNo
           const formData = new FormData()
@@ -307,7 +335,6 @@ h2 {
   margin-top: 0;
 }
 
-/* Выравниваем label и input в одну строку */
 .form-row {
   margin-bottom: 0.6rem;
   display: flex;
@@ -321,7 +348,6 @@ h2 {
   margin-bottom: 0;
 }
 
-/* Если нужно, стилизуйте поле file и иконку */
 .file-input-wrapper {
   display: inline-flex;
   align-items: center;
