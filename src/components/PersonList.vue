@@ -30,6 +30,7 @@
           <th>ИИН</th>
           <th>Имя</th>
           <th>Тип пользователя</th>
+          <th>№ графика</th>
           <th></th> <!-- Под экшен-меню (три точки) -->
         </tr>
       </thead>
@@ -52,6 +53,16 @@
           <td>{{ person.employeeNo }}</td>
           <td>{{ person.name }}</td>
           <td>{{ person.userType }}</td>
+          <td>   
+            <span v-if="person.RightPlan && person.RightPlan.length > 0">
+              [
+                {{ person.RightPlan.map(item => item.planTemplateNo).join(', ') }}
+              ]
+            </span>
+            <span v-else>
+              Нет планов
+            </span> 
+          </td>
 
           <!-- "Три точки" + выпадающее меню -->
           <td class="actions-td">
