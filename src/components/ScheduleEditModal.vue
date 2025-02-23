@@ -8,7 +8,7 @@
         -->
         <div v-for="(item, index) in weekPlanLocal" :key="index" class="day-row">
           <label>
-            <strong>{{ item.week }} </strong>
+            <strong>{{ getRusDayName(item.week) }} </strong>
             <!-- enable toggle -->
             <input type="checkbox" v-model="item.enable" />
             <span v-if="item.enable">
@@ -64,17 +64,31 @@
       // Либо (что в доках) enable хранится отдельно, можно тоже вынести в data().
     },
     methods: {
-        toHmsFormat(timeStr) {
-            // Если уже есть секунды ("HH:MM:SS"), вернём как есть
-            if (!timeStr) return "00:00:00"
-            const parts = timeStr.split(":")
-            if (parts.length === 2) {
-            // Было "HH:MM" => добавим ":00"
-            return timeStr + ":00"
-            }
-            // Иначе (если уже "HH:MM:SS") или что-то другое) не трогаем
-            return timeStr
-        },
+
+      getRusDayName(engDay) {
+        const dayMap = {
+          Monday: 'Понедельник',
+          Tuesday: 'Вторник',
+          Wednesday: 'Среда',
+          Thursday: 'Четверг',
+          Friday: 'Пятница',
+          Saturday: 'Суббота',
+          Sunday: 'Воскресенье'
+        }
+        // если в dayMap нет соответствия, вернём исходный engDay
+        return dayMap[engDay] || engDay
+      },
+      toHmsFormat(timeStr) {
+          // Если уже есть секунды ("HH:MM:SS"), вернём как есть
+          if (!timeStr) return "00:00:00"
+          const parts = timeStr.split(":")
+          if (parts.length === 2) {
+          // Было "HH:MM" => добавим ":00"
+          return timeStr + ":00"
+          }
+          // Иначе (если уже "HH:MM:SS") или что-то другое) не трогаем
+          return timeStr
+      },
       onSave() {
         // 1. Пройдёмся по каждому дню и «допишем» секунды, если нужно
         this.weekPlanLocal.forEach((item) => {

@@ -18,6 +18,8 @@
         <div v-for="device in devices" :key="device.id" class="device-card">
           <!-- Блок .device-header стал кликабельным -->
           <div class="device-header" @click="device.showSchedules = !device.showSchedules">
+            
+            <span class="organization-name">{{ device.organization }}</span>
             <img
               src="@/assets/hikvision.png"
               alt="Device Icon"
@@ -64,7 +66,7 @@
                       :key="idx"
                       class="weekplan-day"
                     >
-                      <strong>{{ wpDay.week }}:</strong>
+                      <strong>{{ getRusDayName(wpDay.week) }}:</strong>
                       <span v-if="wpDay.enable">
                         {{ wpDay.TimeSegment.beginTime }} - {{ wpDay.TimeSegment.endTime }}
                       </span>
@@ -125,6 +127,19 @@ export default {
     this.fetchDevices()
   },
   methods: {
+    getRusDayName(engDay) {
+      const dayMap = {
+        Monday: 'Понедельник',
+        Tuesday: 'Вторник',
+        Wednesday: 'Среда',
+        Thursday: 'Четверг',
+        Friday: 'Пятница',
+        Saturday: 'Суббота',
+        Sunday: 'Воскресенье'
+      }
+      // если в dayMap нет соответствия, вернём исходный engDay
+      return dayMap[engDay] || engDay
+    },
     fetchDevices() {
       this.loading = true
       this.error = null

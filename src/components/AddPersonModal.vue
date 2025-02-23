@@ -106,7 +106,6 @@
               v-if="faceFile"
               class="selected-file-info"
             >
-              <span class="file-name">{{ faceFile.name }}</span>
               <img
                 class="trash-icon"
                 :src="trashIconUrl"
