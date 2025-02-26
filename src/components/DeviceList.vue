@@ -18,19 +18,15 @@
         <div v-for="device in devices" :key="device.id" class="device-card">
           <!-- Блок .device-header стал кликабельным -->
           <div class="device-header" @click="device.showSchedules = !device.showSchedules">
+            <img src="@/assets/hikvision.png" alt="Device Icon" class="device-icon"/>
             
-            <span class="organization-name">{{ device.organization }}</span>
-            <img
-              src="@/assets/hikvision.png"
-              alt="Device Icon"
-              class="device-icon"
-            />
-            <h2 class="device-name">{{ device.name }}</h2>
+            <h3 class="organization-name">{{ getOrganizationName(device.organization) }}</h3>
+            <h2 class="device-name">  {{ device.name }}</h2>
             
             <!-- Убираем кнопку, вместо неё показываем стрелочку справа -->
             <span class="expand-arrow">
               <span v-if="device.showSchedules">˃</span>
-              <span v-else>▼</span>
+              <!-- <span v-else>▼</span> -->
             </span>
           </div>
 
@@ -107,12 +103,14 @@
 <script>
 import api from '@/api'
 import ScheduleEditModal from '@/components/ScheduleEditModal.vue' // <-- Импортируем модалку
+import axios from 'axios'
 
 export default {
   name: 'DeviceList',
   components: { ScheduleEditModal },
   data() {
     return {
+      organizations: [],
       devices: [],
       loading: false,
       error: null,
@@ -124,6 +122,9 @@ export default {
     }
   },
   mounted() {
+    this.fetchOrganizations().then(() => {
+      this.fetchDevices()
+    })
     this.fetchDevices()
   },
   methods: {
@@ -139,6 +140,38 @@ export default {
       }
       // если в dayMap нет соответствия, вернём исходный engDay
       return dayMap[engDay] || engDay
+    },
+
+    async fetchOrganizations() {
+      try {
+        const userResponse = await axios.get('/api/user_info/')
+        const user = userResponse.data
+        if (!user.organization) {
+          console.warn('У пользователя не указана организация')
+          this.organizations = []
+          return
+        }
+
+        const userOrgId = user.organization.id
+        const isMain = user.organization.is_main
+
+        if (isMain) {
+          // Если это главная организация, получаем список дочерних
+          const orgsResponse = await axios.get(`/api/organizations/?parent_id=${userOrgId}`)
+          this.organizations = orgsResponse.data || []
+        } else {
+          // Иначе пользователь в дочерней
+          this.organizations = [user.organization]
+        }
+      } catch (error) {
+        console.error('Ошибка при загрузке организаций:', error)
+        this.organizations = []
+      }
+    },
+    getOrganizationName(orgId) {
+      if (!orgId) return '' // Если orgId не задан
+      const foundOrg = this.organizations.find(o => o.id === orgId)
+      return foundOrg ? foundOrg.name : `Орг. #${orgId}` // Если не нашли, хотя бы вернём ID
     },
     fetchDevices() {
       this.loading = true
@@ -255,10 +288,7 @@ export default {
 </script>
 
 <style scoped>
-.device-list {
-  padding: 16px;
-  background-color: #f9f9f9;
-}
+
 
 .loading {
   font-weight: bold;
@@ -270,35 +300,14 @@ export default {
   margin-bottom: 10px;
 }
 
-/* Карточка устройства */
-.device-card {
-  background: #fff;
-  border: 1px solid #ccc;
-  margin-bottom: 16px;
-  padding: 12px;
-  border-radius: 6px;
-}
-.device-header {
-  display: flex;
-  align-items: center;
-  margin-bottom: 8px;
-  cursor: pointer; /* Чтобы курсор менялся на pointer */
-}
-.device-icon {
-  width: 80px;
-  height: 40px;
-  margin-right: 8px;
-}
+
+
 
 .device-name {
   margin: 0;
   flex: 1; /* Чтобы заголовок занимал всё доступное пространство */
 }
 
-.expand-arrow {
-  font-weight: bold;
-  margin-right: 8px;
-}
 
 /* Обёртка для всех расписаний */
 .schedules-container {
@@ -391,4 +400,60 @@ input:checked + .slider:before {
 .fade-enter, .fade-leave-to {
   opacity: 0;
 }
+
+.device-list {
+  padding: 16px;
+  background-color: #f9f9f9;
+}
+
+/* Общие стили карточки */
+.device-card {
+  background: #fff;
+  border: 1px solid #ccc;
+  margin-bottom: 16px;
+  padding: 12px;
+  border-radius: 6px;
+}
+
+/* Заголовок устройства в виде сетки */
+.device-header {
+  display: grid;
+  /* Настраиваем ширину колонок:
+     200px для организации, 
+     80px для иконки, 
+     1fr для названия (т.е. "всё оставшееся место"),
+     40px под стрелочку (или сколько нужно). */
+  grid-template-columns: 80px 400px 1fr 40px;
+  align-items: center;  /* Выравниваем по центру по вертикали */
+  cursor: pointer;
+  gap: 8px; /* Отступы между «ячейками» */
+}
+
+.organization-name {
+  /* Можно добавить text-overflow, если слишком длинное имя */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis; 
+}
+
+
+.device-icon {
+  width: 80px;
+  height: 40px;
+  /* grid-column: 2; // не обязательно, если порядок совпадает */
+}
+
+
+.device-name {
+  padding-left: 20px;
+  margin: 0;
+  grid-column: 3;
+}
+
+.expand-arrow {
+  font-weight: bold;
+  /* grid-column: 4; // не обязательно */
+  text-align: center; /* или right/left, как удобно */
+}
+
 </style>
