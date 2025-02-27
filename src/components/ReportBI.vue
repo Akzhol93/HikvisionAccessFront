@@ -75,41 +75,36 @@
       <!-- Показать статус загрузки / ошибку -->
       <div v-if="loading">Загрузка...</div>
       <div v-if="error" class="error">Ошибка: {{ error }}</div>
-  
-      <!-- Таблица с результатами (стиль как в PersonList.vue) -->
-      <table v-if="events.length" class="excel-table"> <!-- <-- изменено -->
+
+     
+        <table v-if="groupedEvents.length" class="excel-table">
         <thead>
-          <tr>
-            <!-- Как в PersonList: первая колонка - номер -->
+            <tr>
             <th>#</th>
             <th>Организация</th>
             <th>Дата</th>
-            <th>Устроиство</th>
-            <!-- <th>Событие</th> -->
+            <th>Устройство</th>
             <th>ФИО</th>
             <th>ИИН</th>
-            <!-- Кнопка выгрузки в Excel -->
-            <th style="text-align: center;">
-              <button @click="downloadAsExcel" class="excel-download-btn">
-                <img src="@/assets/download2.png" alt="Excel" width="20" />
-              </button>
-            </th>
-          </tr>
+            <!-- В последней колонке - сумма (count) -->
+            <th>Кол-во</th>
+            </tr>
         </thead>
         <tbody>
-          <tr v-for="(event, index) in events" :key="event.id">
+            <!-- Проходимся по сгруппированным данным -->
+            <tr v-for="(item, index) in groupedEvents" :key="index">
             <td>{{ index + 1 }}</td>
-            <td>{{ event.organization_name }}</td>
-            <td>{{ event.dateTime }}</td>
-            <td>{{ event.device }}</td>
-            <!-- <td>{{ event.eventType }}</td> -->
-            <td>{{ event.name }}</td>
-            <td>{{ event.employeeNoString }}</td>
-            <!-- пустая ячейка под последнюю "эксельную" колонку -->
-            <td></td>
-          </tr>
+            <td>{{ item.organization_name }}</td>
+            <td>{{ item.dateTime }}</td>
+            <td>{{ item.device }}</td>
+            <td>{{ item.name }}</td>
+            <td>{{ item.employeeNoString }}</td>
+            <td>{{ item.count }}</td>
+            </tr>
         </tbody>
-      </table>
+        </table>
+
+   
       <p v-else-if="!loading && !error">Нет данных для отображения.</p>
   
       <!-- Простейшая диаграмма по eventType (client-side) -->
@@ -165,7 +160,43 @@
         const labels = Object.keys(counts)
         const data = Object.values(counts)
         return { labels, data }
-      }
+      },
+      groupedEvents() {
+            // Если нет событий, просто вернуть пустой массив
+            if (!this.events || !this.events.length) return []
+
+            // Словарь/объект для накопления сгруппированных данных
+            const map = {}
+
+            for (const ev of this.events) {
+            // Берём значения для группировки
+            const org = ev.organization_name || ''
+            const date = ev.dateTime || ''       // у вас dateTime сейчас укорочено до "YYYY-MM-DD"
+            const device = ev.device || ''
+            const fio = ev.name || ''
+            const iin = ev.employeeNoString || ''
+
+            // Формируем ключ для группы (можно использовать любой разделитель, уникально не встречающийся)
+            const key = [org, date, device, fio, iin].join('||')
+
+            // Если в map ещё нет такой группы — создаём
+            if (!map[key]) {
+                map[key] = {
+                organization_name: org,
+                dateTime: date,
+                device,
+                name: fio,
+                employeeNoString: iin,
+                count: 0, // счётчик количества записей в группе
+                }
+            }
+            // Увеличиваем счётчик
+            map[key].count++
+            }
+
+            // Превращаем обратно в массив
+            return Object.values(map)
+        },
     },
     methods: {
       async loadOrganizations() {
