@@ -51,6 +51,7 @@
           placeholder="Например: access"
         />
       </div> -->
+
       <div>
         <label for="name">ФИО:</label>
         <input 
@@ -60,6 +61,7 @@
           placeholder="Частичное совпадение"
         />
       </div>
+
       <div>
         <label for="personID">ИИН:</label>
         <input 
@@ -76,11 +78,11 @@
     <div v-if="loading">Загрузка...</div>
     <div v-if="error" class="error">Ошибка: {{ error }}</div>
 
-    <!-- Таблица с результатами (стиль как в PersonList.vue) -->
-    <table v-if="events.length" class="excel-table"> <!-- <-- изменено -->
+    <!-- Таблица с результатами -->
+    <table v-if="events.length" class="excel-table">
       <thead>
         <tr>
-          <!-- Как в PersonList: первая колонка - номер -->
+          <!-- Первая колонка - номер -->
           <th>#</th>
           <th>Организация</th>
           <th>Время</th>
@@ -105,31 +107,23 @@
           <!-- <td>{{ event.eventType }}</td> -->
           <td>{{ event.name }}</td>
           <td>{{ event.employeeNoString }}</td>
-          <!-- пустая ячейка под последнюю "эксельную" колонку -->
+          <!-- Пустая ячейка под последнюю "эксельную" колонку -->
           <td></td>
         </tr>
       </tbody>
     </table>
-    <p v-else-if="!loading && !error">Нет данных для отображения.</p>
 
-    <!-- Простейшая диаграмма по eventType (client-side) -->
-    <div class="chart-section" v-if="chartData">
-      <h3>Количество событий по eventType</h3>
-      <canvas id="eventsChart"></canvas>
-    </div>
+    <p v-else-if="!loading && !error">Нет данных для отображения.</p>
   </div>
 </template>
 
 <script>
 import api from '@/api'
-// chart.js
-import { Chart, BarElement, CategoryScale, LinearScale, BarController } from 'chart.js'
-Chart.register(BarElement, CategoryScale, LinearScale, BarController)
+import axios from 'axios'
 
 // <-- добавлено для экспорта в Excel
 import ExcelJS from 'exceljs'
 import { saveAs } from 'file-saver'
-import axios from 'axios'
 
 export default {
   name: 'ReportDetail',
@@ -147,25 +141,11 @@ export default {
       events: [],
       organizations: [],
       loading: false,
-      error: null,
-      chart: null // будем хранить инстанс Chart
+      error: null
     }
   },
   mounted() {
     this.loadOrganizations()
-  },
-  computed: {
-    chartData() {
-      if (!this.events.length) return null
-      const counts = {}
-      for (const e of this.events) {
-        const etype = e.eventType || 'Unknown'
-        counts[etype] = (counts[etype] || 0) + 1
-      }
-      const labels = Object.keys(counts)
-      const data = Object.values(counts)
-      return { labels, data }
-    }
   },
   methods: {
     async loadOrganizations() {
@@ -177,7 +157,6 @@ export default {
         if (!user.organization) {
           console.warn('У пользователя не указана организация');
           this.organizations = [];
-          this.selectedOrganizations = [];
           return;
         }
         const userOrgId = user.organization.id;
@@ -187,7 +166,6 @@ export default {
         if (isMain) {
           const orgsResponse = await axios.get(`/api/organizations/?parent_id=${userOrgId}`);
           this.organizations = orgsResponse.data || [];
-
         } else {
           // 3) Иначе пользователь в дочерней -> единственная организация
           this.organizations = [user.organization];
@@ -195,13 +173,12 @@ export default {
       } catch (error) {
         console.error('Ошибка при загрузке организаций:', error);
         this.organizations = [];
-        this.selectedOrganizations = [];
       }
     },
     fetchEvents() {
-      this.loading = true
-      this.error = null
-      this.events = []
+      this.loading = true;
+      this.error = null;
+      this.events = [];
 
       const params = {}
       if (this.filters.date_from) params.date_from = this.toISO(this.filters.date_from)
@@ -212,13 +189,10 @@ export default {
       if (this.filters.employeeNoString) params.employeeNoString = this.filters.employeeNoString
       if (this.filters.organization) params.organization = this.filters.organization
 
-      api.get('/api/access-events/', { params })
+      api
+        .get('/api/access-events/', { params })
         .then(response => {
           this.events = response.data
-          // Обновим/пересоздадим график
-          this.$nextTick(() => {
-            this.renderChart()
-          })
         })
         .catch(err => {
           this.error = err.response?.data?.detail || err.message
@@ -229,47 +203,17 @@ export default {
     },
     toISO(datetimeLocal) {
       // datetimeLocal в формате "2025-01-01T14:00"
-      // Вернём без изменений (либо доработайте под ваш формат, если нужно)
+      // Вернём без изменений (или адаптируйте под ваш формат, если нужно)
       return datetimeLocal
     },
-    renderChart() {
-      if (this.chart) {
-        this.chart.destroy()
-        this.chart = null
-      }
-      if (!this.chartData) return
 
-      const ctx = document.getElementById('eventsChart')
-      this.chart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-          labels: this.chartData.labels,
-          datasets: [
-            {
-              label: 'Кол-во событий по eventType',
-              data: this.chartData.data,
-              backgroundColor: 'rgba(75, 192, 192, 0.6)'
-            }
-          ]
-        },
-        options: {
-          responsive: true,
-          scales: {
-            y: {
-              beginAtZero: true
-            }
-          }
-        }
-      })
-    },
-
-    // <-- добавлено: метод для выгрузки в Excel
+    // Метод для выгрузки в Excel
     async downloadAsExcel() {
       try {
         const workbook = new ExcelJS.Workbook()
         const worksheet = workbook.addWorksheet('Events')
 
-        // 1) Заголовок
+        // Заголовок
         worksheet.addRow([
           '#',
           'Organization',
@@ -280,7 +224,7 @@ export default {
           'employeeNoString'
         ])
 
-        // 2) Данные
+        // Данные
         this.events.forEach((ev, index) => {
           worksheet.addRow([
             index + 1,
@@ -293,7 +237,7 @@ export default {
           ])
         })
 
-        // 3) Сохраняем
+        // Сохраняем
         const buffer = await workbook.xlsx.writeBuffer()
         saveAs(new Blob([buffer]), 'events.xlsx')
       } catch (error) {
@@ -306,15 +250,13 @@ export default {
 
 <style scoped>
 .title {
-  color: #294358;;
+  color: #294358;
   margin-top: 2rem;
   margin-bottom: 4rem;
   text-align: center;
 }
-/* Убираем старый стиль для таблицы, если был, 
-   и переносим стили из PersonList.vue: */
 
-/* Кнопка Excel (при желании можно оформить по-своему) */
+/* Кнопка Excel */
 .excel-download-btn {
   background: none;
   border: none;
@@ -324,37 +266,36 @@ export default {
 
 /* Стили таблицы "как в PersonList.vue" */
 .excel-table {
-  border-collapse: collapse;  /* Убираем двойные границы */
+  border-collapse: collapse;
   width: 100%;
-  font-family: Arial, sans-serif; /* Или любая другая */
+  font-family: Arial, sans-serif;
 }
 
 .excel-table th,
 .excel-table td {
-  border: 1px solid #d0d0d0; /* Серые границы, как в Excel */
+  border: 1px solid #d0d0d0;
   padding: 8px;
   text-align: left;
 }
 
 .excel-table thead {
-  background-color: #f0f0f0; /* светло-серый фон для заголовков */
+  background-color: #f0f0f0;
 }
 
 .excel-table tr:nth-child(even) td {
-  background-color: #fafafa; /* полосатые строки */
+  background-color: #fafafa;
 }
 
 .excel-table tr:hover td {
-  background-color: #e8f0fe; /* подсветка при hover */
+  background-color: #e8f0fe;
 }
 
-/* Можно оставить/адаптировать стили формы: */
+/* Стили формы */
 .report-bi form {
   margin-top: 4rem;
   margin-bottom: 4rem;
   display: flex;
   flex-wrap: wrap; 
-  /* flex-direction: row; */
   gap: 10px;
 }
 .report-bi form div {
@@ -364,11 +305,5 @@ export default {
 
 .error {
   color: red;
-}
-
-/* Диаграмма */
-.chart-section {
-  margin-top: 20px;
-  width: 400px; 
 }
 </style>

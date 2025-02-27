@@ -4,6 +4,13 @@ import App from './App.vue'
 import router from './router'
 import axios from 'axios'
 
+
+
+import Vue3ApexCharts from 'vue3-apexcharts'
+
+
+
+
 // 1) Импортируем плагин
 import VueTheMask from 'vue-the-mask'
 
@@ -14,6 +21,9 @@ const app = createApp(App)
 
 // Инициализируем токен, если он есть в localStorage
 initApiWithToken()
+
+app.use(Vue3ApexCharts)
+
 
 // 2) Применяем плагин
 app.use(VueTheMask)
