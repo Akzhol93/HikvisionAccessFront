@@ -5,7 +5,7 @@ import MainPage from '@/components/MainPage.vue'
 import ForgotPasswordPage from '@/components/ForgotPasswordPage.vue'
 import PasswordResetConfirm from '@/components/PasswordResetConfirm.vue'
 import DeviceList from '@/components/DeviceList.vue'
-import ReportBI from '@/components/ReportBI.vue'
+import ReportBI from '@/components/ReportDetail.vue'
 
 const routes = [
   {

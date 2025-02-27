@@ -1,11 +1,6 @@
 <template>
   <div>
-    <h2>Список персон</h2>
-
-    <!-- (Кнопка Добавить) -->
-    <button @click="showAddModal = true" class="add-person-btn">
-      + Добавить
-    </button>
+    <h1 class="title">Список персон</h1>
 
     <div class="org-selector">
       <label>Выберите организацию:</label>
@@ -16,7 +11,6 @@
       <label>Выберите устройство:</label>
       <v-select v-model="selectedDevices" :options="filteredDevices" label="name" multiple :closeOnSelect="false" />
     </div>
-
 
 
     <!-- Кнопка обновления списка персон -->
@@ -34,6 +28,13 @@
         placeholder="Введите ИИН для поиска"
       />
     </div>
+
+    
+
+    <!-- (Кнопка Добавить) -->
+    <button @click="showAddModal = true" class="add-person-btn">
+      + Добавить
+    </button>
 
 
     <!-- (2) Таблица с персонами -->
@@ -460,11 +461,18 @@ export default {
 
 <style scoped>
 .org-selector {
+  margin-top: 4rem;
   margin-bottom: 1rem;
 }
 
 .device-selector {
   margin-bottom: 2rem;
+}
+.title {
+  color: #294358;;
+  margin-top: 2rem;
+  margin-bottom: 4rem;
+  text-align: center;
 }
 
 .iinSearch {
@@ -473,6 +481,7 @@ export default {
 }
 /* Можно стилизовать кнопку Добавить */
 .add-person-btn {
+  margin-top: 1rem;
   margin-bottom: 1rem;
   padding: 0.4rem 0.8rem;
   cursor: pointer;

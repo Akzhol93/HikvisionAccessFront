@@ -1,6 +1,6 @@
 <template>
   <div class="device-list">
-    <h1>Список устройств</h1>
+    <h1 class="title">Устройства контроля доступа</h1>
 
     <!-- 1) Если идёт загрузка -->
     <div v-if="loading" class="loading">Загрузка...</div>
@@ -21,7 +21,7 @@
             <img src="@/assets/hikvision.png" alt="Device Icon" class="device-icon"/>
             
             <h3 class="organization-name">{{ getOrganizationName(device.organization) }}</h3>
-            <h2 class="device-name">  {{ device.name }}</h2>
+            <h3 class="device-name">  {{ device.name }}</h3>
             
             <!-- Убираем кнопку, вместо неё показываем стрелочку справа -->
             <span class="expand-arrow">
@@ -288,6 +288,13 @@ export default {
 </script>
 
 <style scoped>
+
+.title {
+  color: #294358;;
+  margin-top: 2rem;
+  margin-bottom: 4rem;
+  text-align: center;
+}
 
 
 .loading {

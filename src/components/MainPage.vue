@@ -3,7 +3,7 @@
     <!-- Сайдбар -->
 
     <aside class="sidebar">
-      <h2 class="sidebar-title">Панель</h2>
+      <h2 class="sidebar-title">Разделы</h2>
       <ul class="sidebar-nav">
         <li 
           :class="{ active: activeTab === 'devices' }" 
@@ -20,12 +20,21 @@
           Список персон
         </li>
         <li
-          :class="{ active: activeTab === 'report' }"
-          @click="activeTab = 'report'"
+          :class="{ active: activeTab === 'reportDetail' }"
+          @click="activeTab = 'reportDetail'"
         >
           <i class="icon-report"></i>
-          BI отчёт
+          Детальный отчет
         </li>
+
+        <li
+          :class="{ active: activeTab === 'reportBI' }"
+          @click="activeTab = 'reportBI'"
+        >
+          <i class="icon-report"></i>
+          BI отчет
+        </li>
+
         <li
           :class="{ active: activeTab === 'orginfo' }"
           @click="activeTab = 'orginfo'"
@@ -49,7 +58,11 @@
         <PersonList />
       </section>
 
-      <section v-else-if="activeTab === 'report'">
+      <section v-else-if="activeTab === 'reportDetail'">
+        <ReportDetail />
+      </section>
+
+      <section v-else-if="activeTab === 'reportBI'">
         <ReportBI />
       </section>
 
@@ -64,8 +77,9 @@
 
 <script>
 import DeviceList from '@/components/DeviceList.vue'
-import ReportBI from './ReportBI.vue';
-import PersonList from './PersonList.vue';
+import ReportDetail from '@/components/ReportDetail.vue';
+import ReportBI from '@/components/ReportBI.vue';
+import PersonList from '@/components/PersonList.vue';
 
 export default {
   name: 'MainPage',
@@ -81,7 +95,7 @@ export default {
     }
   },
   components: {
-    DeviceList,ReportBI, PersonList
+    DeviceList,ReportDetail,ReportBI, PersonList,
   },
   data() {
     return {
@@ -101,14 +115,15 @@ export default {
 /* Сайдбар */
 .sidebar {
   width: 240px;
-  background-color: #333;
+  background-color: #294358;
   color: #fff;
   padding: 20px;
 }
 
 .sidebar-title {
-  font-size: 1.2rem;
-  margin-bottom: 20px;
+  text-align: center;
+  font-size: 1.5rem;
+  margin-bottom: 3rem;
 }
 
 .sidebar-nav {
@@ -125,7 +140,7 @@ export default {
 }
 
 .sidebar-nav li:hover {
-  background-color: #444;
+  background-color: #bcbfca;
 }
 
 .sidebar-nav li.active {
