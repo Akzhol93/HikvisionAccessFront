@@ -67,9 +67,7 @@
       </section>
 
       <section v-else-if="activeTab === 'orginfo'">
-        <h1>Организация / Профиль</h1>
-        <p>Здесь будут данные организации (readonly) и профиль пользователя (с возможностью редактировать).</p>
-        <!-- TODO: компонент OrgAndUserInfo.vue -->
+        <OrgProfile />
       </section>
     </main>
   </div>
@@ -80,6 +78,7 @@ import DeviceList from '@/components/DeviceList.vue'
 import ReportDetail from '@/components/ReportDetail.vue';
 import ReportBI from '@/components/ReportBI.vue';
 import PersonList from '@/components/PersonList.vue';
+import OrgProfile from '@/components/OrgProfile.vue';
 
 export default {
   name: 'MainPage',
@@ -95,7 +94,7 @@ export default {
     }
   },
   components: {
-    DeviceList,ReportDetail,ReportBI, PersonList,
+    DeviceList,ReportDetail,ReportBI, PersonList,OrgProfile
   },
   data() {
     return {
@@ -109,17 +108,20 @@ export default {
 /* Пример базовой сетки */
 .main-layout {
   display: flex;
-  min-height: 100vh; /* чтобы тянулось на всю высоту экрана */
+  /* min-height: 100vh; чтобы тянулось на всю высоту экрана */
 }
 
-/* Сайдбар */
+
 .sidebar {
+  position: fixed;   /* Закрепляем */
+  top: 0;            /* Прижимаем к верхнему краю экрана */
+  bottom: 0;         /* Прижимаем к нижнему краю экрана (чтобы тянулось на всю высоту) */
+  left: 0;           /* Прижимаем к левому краю */
   width: 240px;
   background-color: #294358;
   color: #fff;
   padding: 20px;
 }
-
 .sidebar-title {
   text-align: center;
   font-size: 1.5rem;
@@ -161,9 +163,9 @@ export default {
   content: "🏛 ";
 }
 
-/* Основная область */
+
 .content-area {
-  flex: 1;
+  margin-left: 270px;  /* Отодвигаем основную часть, чтобы не наезжала на фиксированный сайдбар */
   padding: 20px;
   background-color: #f9f9f9;
 }

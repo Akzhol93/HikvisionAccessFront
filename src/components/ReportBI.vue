@@ -66,7 +66,10 @@
     </form>
 
     <!-- Блок с чекбоксами для выбора полей группировки -->
-    <div class="grouping-options">
+    <div 
+      class="grouping-options" 
+      v-if="!loading && !error && events.length"
+    >
       <span>Группировать по:</span>
       <label
         v-for="field in groupingFields"
@@ -92,6 +95,13 @@
             {{ field.label }}
           </th>
           <th>Кол-во</th>
+          <!-- В отдельной ячейке в заголовке можно добавить кнопку выгрузки: -->
+          <th style="text-align: center;">
+            <!-- Кнопка выгрузки в Excel (иконку замените на свою при желании) -->
+            <button @click="downloadAsExcel" class="excel-download-btn">
+              <img src="@/assets/download2.png" alt="Excel" width="20" />
+            </button>
+          </th>
         </tr>
       </thead>
       <tbody>
@@ -101,31 +111,43 @@
             {{ item[field.key] }}
           </td>
           <td>{{ item.count }}</td>
+          <!-- Пустая ячейка, чтобы "совпадал" индекс столбцов с заголовком -->
+          <td></td>
         </tr>
       </tbody>
     </table>
 
     <p v-else-if="!loading && !error">Нет данных для отображения.</p>
 
-    <!-- Блок с диаграммами (ApexCharts) -->
-    <div class="chart-section" v-if="events.length">
-      <!-- 1) Столбчатая диаграмма по eventType -->
-      <h3>Распределение событий по типам (Bar)</h3>
-      <apexchart
-        type="bar"
-        height="350"
-        :options="chartOptionsBar"
-        :series="chartSeriesBar"
-      ></apexchart>
+    <h1 class="title" v-if="!loading && !error && events.length">
+      BI Аналитика
+    </h1>
 
-      <!-- 2) Круговая диаграмма по организациям -->
-      <h3>Распределение событий по организациям (Pie)</h3>
-      <apexchart
-        type="pie"
-        height="350"
-        :options="chartOptionsPie"
-        :series="chartSeriesPie"
-      ></apexchart>
+    <!-- Блок с диаграммой (Line/Pie) -->
+    <div class="chart-section" v-if="events.length">
+      <!-- 1) Линейная диаграмма -->
+      <div class="line-chart-block">
+   
+        <apexchart
+          type="line"
+          height="350"
+          width="100%"
+          :options="chartOptionsLine"
+          :series="chartSeriesLine"
+        ></apexchart>
+      </div>
+
+      <!-- 2) Круговая диаграмма -->
+      <div class="pie-chart-block">
+
+        <apexchart
+          type="pie"
+          height="350"
+          width="100%"
+          :options="chartOptionsPie"
+          :series="chartSeriesPie"
+        ></apexchart>
+      </div>
     </div>
   </div>
 </template>
@@ -134,9 +156,9 @@
 import axios from 'axios'
 import api from '@/api'
 
-// Если нужно поддерживать Chart.js - не забудьте убрать или оставить
-// import { Chart, BarElement, CategoryScale, LinearScale, BarController } from 'chart.js'
-// Chart.register(BarElement, CategoryScale, LinearScale, BarController)
+// 1) Импортируем модули для Excel
+import ExcelJS from 'exceljs'
+import { saveAs } from 'file-saver'
 
 export default {
   name: 'ReportDetail',
@@ -158,57 +180,48 @@ export default {
 
       // Группировка по полям
       groupingFields: [
-        { key: 'organization_name', label: 'Организация', selected: true },
-        { key: 'dateTime',          label: 'Дата',         selected: true },
-        { key: 'device',            label: 'Устройство',   selected: true },
-        { key: 'name',              label: 'ФИО',          selected: true },
-        { key: 'employeeNoString',  label: 'ИИН',          selected: true },
+        { key: 'organization_name', label: 'Организация',  selected: true },
+        { key: 'month',             label: 'Месяц',        selected: true },
+        { key: 'dateTime',          label: 'Дата',         selected: false },
+        { key: 'device',            label: 'Устройство',   selected: false },
+        { key: 'name',              label: 'ФИО',          selected: false },
+        { key: 'employeeNoString',  label: 'ИИН',          selected: false },
       ],
 
-      // Настройки для диаграмм (Bar и Pie)
-      chartOptionsBar: {
+      // Настройки для линейной диаграммы
+      chartOptionsLine: {
         chart: {
-          id: 'chart-bar',
-          toolbar: {
-            show: true
-          }
+          id: 'chart-line',
+          toolbar: { show: true }
         },
         xaxis: {
-          categories: [],
-          labels: {
-            rotate: 0
-          }
+          categories: [], // будет заполняться
+          labels: { rotate: 0 }
         },
-        plotOptions: {
-          bar: {
-            horizontal: false,
-          }
+        yaxis: {
+          title: { text: 'Количество' }
         },
-        dataLabels: {
-          enabled: true
-        },
+        dataLabels: { enabled: false },
+        stroke: { curve: 'smooth' },
         title: {
-          text: 'События по типам',
+          text: 'Посещаемость по организациям во времени',
           align: 'left'
         }
       },
-      chartSeriesBar: [],
+      chartSeriesLine: [],
 
+      // Настройки для диаграммы Pie
       chartOptionsPie: {
-        chart: {
-          id: 'chart-pie'
-        },
+        chart: { id: 'chart-pie' },
         labels: [],
         responsive: [{
           breakpoint: 480,
           options: {
-            legend: {
-              position: 'bottom'
-            }
+            legend: { position: 'bottom' }
           }
         }],
         title: {
-          text: 'События по организациям',
+          text: 'Количество по организациям',
           align: 'left'
         }
       },
@@ -219,20 +232,16 @@ export default {
     this.loadOrganizations()
   },
   computed: {
-    // Вычисляемая сводная таблица
+    // Сформированная "сводная" (grouped) таблица по выбранным полям
     groupedEvents() {
       if (!this.events || !this.events.length) return []
-
       const selectedCols = this.groupingFields
         .filter(field => field.selected)
         .map(field => field.key)
 
       if (!selectedCols.length) {
-        return [{
-          count: this.events.length
-        }]
+        return [{ count: this.events.length }]
       }
-
       const map = {}
 
       for (const ev of this.events) {
@@ -253,16 +262,14 @@ export default {
       return Object.values(map)
     },
     selectedGroupingFields() {
-      return this.groupingFields.filter(field => field.selected);
-    },
+      return this.groupingFields.filter(field => field.selected)
+    }
   },
   methods: {
     async loadOrganizations() {
       try {
-        // 1) Получаем информацию о текущем пользователе
         const userResponse = await axios.get('/api/user_info/');
         const user = userResponse.data;
-
         if (!user.organization) {
           console.warn('У пользователя не указана организация');
           this.organizations = [];
@@ -271,12 +278,10 @@ export default {
         const userOrgId = user.organization.id;
         const isMain = user.organization.is_main;
 
-        // 2) Если это главная организация -> получить список дочерних
         if (isMain) {
           const orgsResponse = await axios.get(`/api/organizations/?parent_id=${userOrgId}`);
           this.organizations = orgsResponse.data || [];
         } else {
-          // 3) Иначе пользователь в дочерней -> единственная организация
           this.organizations = [user.organization];
         }
       } catch (error) {
@@ -291,26 +296,30 @@ export default {
       this.events = []
 
       const params = {}
-      if (this.filters.date_from) params.date_from = this.toISO(this.filters.date_from)
-      if (this.filters.date_to) params.date_to = this.toISO(this.filters.date_to)
-      if (this.filters.device) params.device = this.filters.device
-      if (this.filters.eventType) params.eventType = this.filters.eventType
-      if (this.filters.name) params.name = this.filters.name
+      const months = [
+        'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+        'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
+      ]
+      if (this.filters.date_from)        params.date_from        = this.toISO(this.filters.date_from)
+      if (this.filters.date_to)          params.date_to          = this.toISO(this.filters.date_to)
+      if (this.filters.device)           params.device           = this.filters.device
+      if (this.filters.eventType)        params.eventType        = this.filters.eventType
+      if (this.filters.name)             params.name             = this.filters.name
       if (this.filters.employeeNoString) params.employeeNoString = this.filters.employeeNoString
-      if (this.filters.organization) params.organization = this.filters.organization
+      if (this.filters.organization)     params.organization     = this.filters.organization
 
       api.get('/api/access-events/', { params })
         .then(response => {
-          // Преобразуем поле dateTime у каждого события
+          // Преобразуем дату (оставляем только год-месяц-день)
           response.data.forEach(event => {
             if (event.dateTime) {
-              // например, в формат YYYY-MM-DD
               event.dateTime = event.dateTime.split('T')[0]
+
+              const d = new Date(event.dateTime)
+              event.month = `${d.getFullYear()} ${months[d.getMonth()]} `
             }
           })
-
           this.events = response.data
-          // Обновляем данные для диаграмм
           this.updateChartData()
         })
         .catch(err => {
@@ -322,48 +331,132 @@ export default {
     },
 
     toISO(datetimeLocal) {
-      // Можно подправить логику, если нужно точное преобразование
+      // При необходимости подправьте под свой формат
       return datetimeLocal
     },
 
-    // Собираем данные и записываем в chartSeriesBar, chartSeriesPie
+    isSameMonth(dateFrom, dateTo) {
+      return (
+        dateFrom.getFullYear() === dateTo.getFullYear() &&
+        dateFrom.getMonth() === dateTo.getMonth()
+      );
+    },
+
     updateChartData() {
       if (!this.events || !this.events.length) {
-        this.chartSeriesBar = []
+        this.chartSeriesLine = []
+        this.chartOptionsLine.xaxis.categories = []
         this.chartSeriesPie = []
+        this.chartOptionsPie.labels = []
         return
       }
 
-      // 1) Бар-диаграмма: группировка по eventType
-      const countsByEventType = {}
-      for (const ev of this.events) {
-        const etype = ev.eventType || 'Unknown'
-        countsByEventType[etype] = (countsByEventType[etype] || 0) + 1
+      const dateFrom = this.filters.date_from ? new Date(this.filters.date_from) : null
+      const dateTo   = this.filters.date_to   ? new Date(this.filters.date_to)   : null
+
+      let groupByDay = true
+      if (dateFrom && dateTo && !this.isSameMonth(dateFrom, dateTo)) {
+        groupByDay = false
       }
-      const barLabels = Object.keys(countsByEventType)
-      const barValues = Object.values(countsByEventType)
 
-      // Обновляем опции
-      this.chartOptionsBar.xaxis.categories = barLabels
-      this.chartSeriesBar = [
-        {
-          name: 'Кол-во событий',
-          data: barValues
+      const orgDateCountMap = {}
+
+      this.events.forEach(ev => {
+        const orgName = ev.organization_name || 'Без организации'
+        let key
+        if (groupByDay) {
+          key = ev.dateTime.substring(0, 10) // YYYY-MM-DD
+        } else {
+          key = ev.dateTime.substring(0, 7)  // YYYY-MM
         }
-      ]
 
-      // 2) Pie-диаграмма: группировка по organization_name
+        if (!orgDateCountMap[orgName]) {
+          orgDateCountMap[orgName] = {}
+        }
+        orgDateCountMap[orgName][key] = (orgDateCountMap[orgName][key] || 0) + 1
+      })
+
+      // Собираем все даты (или месяцы) и сортируем
+      const allDatesSet = new Set()
+      for (const orgName in orgDateCountMap) {
+        Object.keys(orgDateCountMap[orgName]).forEach(dateOrMonth => {
+          allDatesSet.add(dateOrMonth)
+        })
+      }
+      const allDatesSorted = Array.from(allDatesSet).sort()
+
+      const series = []
+      for (const orgName in orgDateCountMap) {
+        const data = allDatesSorted.map(dateOrMonth => {
+          return orgDateCountMap[orgName][dateOrMonth] || 0
+        })
+        series.push({
+          name: orgName,
+          data
+        })
+      }
+
+      this.chartOptionsLine.xaxis.categories = allDatesSorted
+      this.chartSeriesLine = series
+
+      // Обновляем Pie Chart
       const countsByOrg = {}
       for (const ev of this.events) {
         const orgName = ev.organization_name || 'Без организации'
         countsByOrg[orgName] = (countsByOrg[orgName] || 0) + 1
       }
-
       const pieLabels = Object.keys(countsByOrg)
       const pieValues = Object.values(countsByOrg)
 
       this.chartOptionsPie.labels = pieLabels
       this.chartSeriesPie = pieValues
+    },
+
+    // 2) Метод для выгрузки именно "сгруппированной" таблицы groupedEvents в Excel
+    async downloadAsExcel() {
+      try {
+        const workbook = new ExcelJS.Workbook()
+        const worksheet = workbook.addWorksheet('GroupedEvents')
+
+        // Формируем структуру колонок для Excel на основе выбранных полей
+        // + отдельная колонка count
+        const columns = [
+          { header: '#', key: 'index', width: 5 }
+        ]
+
+        // Для каждой выбранной группировки добавим колонку
+        this.selectedGroupingFields.forEach(field => {
+          columns.push({
+            header: field.label,
+            key: field.key,
+            width: 20
+          })
+        })
+
+        // В конце добавим колонку для "Кол-во"
+        columns.push({ header: 'Кол-во', key: 'count', width: 10 })
+
+        worksheet.columns = columns
+
+        // Заполняем строки
+        this.groupedEvents.forEach((item, index) => {
+          // Формируем объект в формате { index: 1, organization_name: '', dateTime: '', ... , count: N }
+          const rowData = { index: index + 1 }
+          // Подставляем значения по ключам
+          this.selectedGroupingFields.forEach(field => {
+            rowData[field.key] = item[field.key]
+          })
+          rowData.count = item.count
+
+          worksheet.addRow(rowData)
+        })
+
+        // Сохраняем полученный Excel-файл
+        const buffer = await workbook.xlsx.writeBuffer()
+        saveAs(new Blob([buffer]), 'grouped_events.xlsx')
+      } catch (error) {
+        console.error('Ошибка при экспорте в Excel:', error)
+      }
     }
   }
 }
@@ -377,7 +470,6 @@ export default {
   text-align: center;
 }
 
-/* Форма */
 .report-bi form {
   margin-top: 4rem;
   margin-bottom: 2rem;
@@ -391,16 +483,16 @@ export default {
   flex-direction: column;
 }
 
-/* Чекбоксы группировки */
 .grouping-options {
+  margin-top: 5rem;
   margin-bottom: 2rem;
 }
 
-/* Таблица "excel-table" */
 .excel-table {
   border-collapse: collapse;
   width: 100%;
   font-family: Arial, sans-serif;
+  margin-bottom: 10rem;
 }
 
 .excel-table th,
@@ -422,17 +514,29 @@ export default {
   background-color: #e8f0fe;
 }
 
-/* Диаграмма */
 .chart-section {
   margin-top: 20px;
   width: 100%;
-  max-width: 800px;
-  margin: 0 auto;
+  max-width: none;
+  margin: 5rem auto;
+}
+.line-chart-block {
+  margin-bottom: 5rem; 
 }
 
 .error {
   color: red;
 }
-</style>
 
-<!-- ц -->
+/* Пример стиля для кнопки Excel */
+.excel-download-btn {
+  background: none;
+  border: 1px solid #ccc;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+.excel-download-btn:hover {
+  background: #f0f0f0;
+}
+</style>
