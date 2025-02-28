@@ -108,7 +108,7 @@ export default {
 /* Пример базовой сетки */
 .main-layout {
   display: flex;
-  /* min-height: 100vh; чтобы тянулось на всю высоту экрана */
+  min-height: 100vh; 
 }
 
 
@@ -116,7 +116,7 @@ export default {
   position: fixed;   /* Закрепляем */
   top: 0;            /* Прижимаем к верхнему краю экрана */
   bottom: 0;         /* Прижимаем к нижнему краю экрана (чтобы тянулось на всю высоту) */
-  left: 0;           /* Прижимаем к левому краю */
+  left: 0;    
   width: 240px;
   background-color: #294358;
   color: #fff;
@@ -165,7 +165,8 @@ export default {
 
 
 .content-area {
-  margin-left: 270px;  /* Отодвигаем основную часть, чтобы не наезжала на фиксированный сайдбар */
+  flex: 1;  /* Отодвигаем основную часть, чтобы не наезжала на фиксированный сайдбар */
+  margin-left: 270px;
   padding: 20px;
   background-color: #f9f9f9;
 }
