@@ -18,16 +18,28 @@
         <div v-for="device in devices" :key="device.id" class="device-card">
           <!-- Блок .device-header стал кликабельным -->
           <div class="device-header" @click="device.showSchedules = !device.showSchedules">
-            <img src="@/assets/hikvision.png" alt="Device Icon" class="device-icon"/>
-            
-            <h3 class="organization-name">{{ getOrganizationName(device.organization) }}</h3>
+
+            <div class="device-icon-wrapper">
+              <img
+                src="@/assets/hikvision.png"
+                alt="Device Icon"
+                class="device-icon"
+              />
+              <!-- Статус -->
+              <div
+                class="device-status"
+                :class="device.is_online ? 'status-online' : 'status-offline'"
+              >
+                {{ device.is_online ? 'online' : 'offline' }}
+              </div>
+            </div>
+
+            <!-- <img src="@/assets/hikvision.png" alt="Device Icon" class="device-icon"/> -->
             <h3 class="device-name">  {{ device.name }}</h3>
             
-            <!-- Убираем кнопку, вместо неё показываем стрелочку справа -->
-            <span class="expand-arrow">
-              <span v-if="device.showSchedules">˃</span>
-              <!-- <span v-else>▼</span> -->
-            </span>
+            <h5 class="organization-name">{{ getOrganizationName(device.organization) }}</h5>
+            
+     
           </div>
 
           <!-- Блок расписаний: показывать только если device.showSchedules=true -->
@@ -125,7 +137,6 @@ export default {
     this.fetchOrganizations().then(() => {
       this.fetchDevices()
     })
-    this.fetchDevices()
   },
   methods: {
     getRusDayName(engDay) {
@@ -178,6 +189,7 @@ export default {
       this.error = null
       api.get('/api/devices/')
         .then((response) => {
+
           this.devices = response.data || []
 
           // Для визуального управления dropdown'ом - добавим showSchedules=false
@@ -454,7 +466,7 @@ input:checked + .slider:before {
 .device-name {
   padding-left: 20px;
   margin: 0;
-  grid-column: 3;
+  grid-column: 2;
 }
 
 .expand-arrow {
@@ -462,5 +474,25 @@ input:checked + .slider:before {
   /* grid-column: 4; // не обязательно */
   text-align: center; /* или right/left, как удобно */
 }
+.device-icon-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* Центровка */
+}
+/* Статус */
+.device-status {
+  margin-top: 4px;
+  font-weight: bold;
+  font-size: 0.85rem;
+}
+
+.status-online {
+  color: green;
+}
+
+.status-offline {
+  color: red;
+}
+
 
 </style>
