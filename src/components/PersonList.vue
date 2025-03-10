@@ -2,47 +2,51 @@
   <div>
     <h1 class="title">Список персон</h1>
 
-    <div class="org-selector">
-      <label>Выберите организацию:</label>
-      <v-select
-        v-model="selectedOrganizations"
-        :options="organizations"
-        label="name"
-        multiple
-        :closeOnSelect="false"
-      />
+    <div class="filter">
+      <div class="org-selector">
+        <label>Выберите организацию:</label>
+        <v-select
+          v-model="selectedOrganizations"
+          :options="organizations"
+          label="name"
+          multiple
+          :closeOnSelect="false"
+        />
+      </div>
+
+      <div class="device-selector">
+        <label>Выберите устройство:</label>
+        <v-select
+          v-model="selectedDevices"
+          :options="filteredDevices"
+          label="name"
+          multiple
+          :closeOnSelect="false"
+        />
+      </div>
+
+      <!-- Кнопка обновления списка персон -->
+      <button
+        v-if="selectedDevices.length > 0"
+        @click="fetchPersons"
+        class="refresh-btn"
+      >
+        <img src="@/assets/update.png" alt="Обновить" class="icon" />
+        Обновить таблицу
+      </button>
+
+      <div class="iinSearch" v-if="selectedDevices.length > 0">
+        <label for="iinSearch">Поиск по ИИН:</label>
+        <input
+          id="iinSearch"
+          v-model="searchIin"
+          type="text"
+          placeholder="Введите ИИН для поиска"
+        />
+      </div>
     </div>
 
-    <div class="device-selector">
-      <label>Выберите устройство:</label>
-      <v-select
-        v-model="selectedDevices"
-        :options="filteredDevices"
-        label="name"
-        multiple
-        :closeOnSelect="false"
-      />
-    </div>
 
-    <!-- Кнопка обновления списка персон -->
-    <button
-      v-if="selectedDevices.length > 0"
-      @click="fetchPersons"
-      class="refresh-btn"
-    >
-      <img src="@/assets/update.png" alt="Обновить" class="icon" />
-      Обновить таблицу
-    </button>
-
-    <div class="iinSearch" v-if="selectedDevices.length > 0">
-      <label for="iinSearch">Поиск по ИИН:</label>
-      <input
-        id="iinSearch"
-        v-model="searchIin"
-        type="text"
-        placeholder="Введите ИИН для поиска"
-      />
-    </div>
 
     <!-- (Кнопка Добавить) -->
     <button @click="showAddModal = true" class="add-person-btn">
