@@ -25,16 +25,6 @@
         />
       </div>
 
-      <!-- Кнопка обновления списка персон -->
-      <button
-        v-if="selectedDevices.length > 0"
-        @click="fetchPersons"
-        class="refresh-btn"
-      >
-        <img src="@/assets/update.png" alt="Обновить" class="icon" />
-        Обновить таблицу
-      </button>
-
       <div class="iinSearch" v-if="selectedDevices.length > 0">
         <label for="iinSearch">Поиск по ИИН:</label>
         <input
@@ -45,6 +35,16 @@
         />
       </div>
     </div>
+
+    <!-- Кнопка обновления списка персон -->
+    <button
+    v-if="selectedDevices.length > 0"
+    @click="fetchPersons"
+    class="refresh-btn"
+    >
+      <img src="@/assets/update.png" alt="Обновить" class="icon" />
+      Обновить таблицу
+    </button>
 
 
 
@@ -522,13 +522,10 @@ export default {
 </script>
 
 <style scoped>
-.org-selector {
-  margin-top: 4rem;
-  margin-bottom: 1rem;
+.org-selector,  .device-selector{
+  margin-top: 2rem;
 }
-.device-selector {
-  margin-bottom: 2rem;
-}
+
 .title {
   color: #294358;
   margin-top: 2rem;
