@@ -9,6 +9,7 @@
           :options="organizations"
           label="name"
           multiple
+          :searchable="true"
           :closeOnSelect="false"
           placeholder="Выберите организацию"
         />
@@ -23,7 +24,11 @@
           :closeOnSelect="false"
           placeholder="Выберите устроиство"
           :loading="isLoading"
+          :disabled="selectedOrganizations.length === 0"
         />
+        <small v-if="selectedOrganizations.length === 0" class="warning-text">
+          Сначала выберите организацию
+        </small>
       </div>
 
       <div class="iinSearch">
@@ -141,6 +146,14 @@
         >
           Следующая
         </button>
+
+        <label for="pageSize">Кол-во записей на странице:</label>
+        <select v-model="pageSize" id="pageSize">
+          <option :value="20">20</option>
+          <option :value="50">50</option>
+          <option :value="100">100</option>
+          <option :value="500">500</option>
+        </select>
       </div>
     </div>
 
@@ -171,6 +184,7 @@ import 'vue-select/dist/vue-select.css'
 
 import ExcelJS from 'exceljs'
 import { saveAs } from 'file-saver'
+
 
 export default {
   name: 'PersonList',
@@ -318,8 +332,6 @@ export default {
         this.isLoading = false
       }
     },
-
-    // (4)fetchPersons с кэшированием faceImageData
     async fetchPersons() {
       if (!this.selectedDevices.length) {
         this.persons = []
@@ -606,6 +618,7 @@ export default {
   width: 20px;
   height: 20px;
 }
+
 .excel-table {
   border-collapse: collapse;
   width: 100%;
@@ -631,5 +644,9 @@ export default {
   gap: 1rem;
   align-items: center;
   margin-top: 1rem;
+}
+.warning-text {
+  color: red;
+  font-size: 0.85rem;
 }
 </style>
