@@ -464,10 +464,30 @@ export default {
 
 <style scoped>
 .title {
-  color: #294358;
-  margin-top: 2rem;
-  margin-bottom: 4rem;
+  font-size: 28px; /* Крупный размер */
+  font-weight: bold;
+  color: #2c3e50; /* Темно-синий цвет */
   text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 16px 0;
+  position: relative;
+}
+
+.title::after {
+  content: "";
+  display: block;
+  width: 80px;
+  height: 4px;
+  background: linear-gradient(to right, #42b983, #2c3e50); /* Градиентная линия */
+  margin: 8px auto;
+  border-radius: 2px;
+}
+
+@media (max-width: 768px) {
+  .title {
+    font-size: 22px; /* Меньше на мобильных */
+  }
 }
 
 .report-bi form {

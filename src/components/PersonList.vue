@@ -4,22 +4,37 @@
 
     <div class="org-selector">
       <label>Выберите организацию:</label>
-      <v-select v-model="selectedOrganizations" :options="organizations" label="name" multiple :closeOnSelect="false" />
+      <v-select
+        v-model="selectedOrganizations"
+        :options="organizations"
+        label="name"
+        multiple
+        :closeOnSelect="false"
+      />
     </div>
 
     <div class="device-selector">
       <label>Выберите устройство:</label>
-      <v-select v-model="selectedDevices" :options="filteredDevices" label="name" multiple :closeOnSelect="false" />
+      <v-select
+        v-model="selectedDevices"
+        :options="filteredDevices"
+        label="name"
+        multiple
+        :closeOnSelect="false"
+      />
     </div>
 
-
     <!-- Кнопка обновления списка персон -->
-    <button @click="fetchPersons"  v-if="selectedDevices.length > 0" class="refresh-btn">
+    <button
+      v-if="selectedDevices.length > 0"
+      @click="fetchPersons"
+      class="refresh-btn"
+    >
       <img src="@/assets/update.png" alt="Обновить" class="icon" />
       Обновить таблицу
     </button>
 
-    <div class="iinSearch"  v-if="selectedDevices.length > 0">
+    <div class="iinSearch" v-if="selectedDevices.length > 0">
       <label for="iinSearch">Поиск по ИИН:</label>
       <input
         id="iinSearch"
@@ -29,90 +44,94 @@
       />
     </div>
 
-    
-
     <!-- (Кнопка Добавить) -->
     <button @click="showAddModal = true" class="add-person-btn">
       + Добавить
     </button>
 
-
-    <!-- (2) Таблица с персонами -->
-    <table v-if="persons.length > 0" class="excel-table">
-      <thead>
-        <tr>
-          <th>#</th> 
-          <th>Организация</th> 
-          <th>Устройство</th> 
-          <th>Фото</th>
-          <th>ИИН</th>
-          <th>Имя</th>
-          <th>Тип пользователя</th>
-          <th>№ графика</th>
-          <th style="text-align: center;">
-            <button @click="downloadAsExcel" class="excel-download-btn">
-              <!-- Можно иконкой/картинкой, например: -->
-              <img src="@/assets/download2.png" alt="Excel" width="20" />
-              <!-- <i class="fas fa-file-excel"></i> -->
-             
-            </button>
-          </th>
-        </tr>
-      </thead>
-      <tbody>
-
-        <!-- <tr v-for="(person, index) in persons" :key="index"> -->
-        <tr v-for="(person, index) in filteredPersons" :key="index">
-          <td>{{ index + 1 }}</td>
-          <td>{{ getOrganizationName(person.organization_id) }}</td>
-          <td>{{ person.device_name }}</td>
-          <!-- Фото -->
-          <td>
-            <!-- Если уже загружено фото (faceImageData) – показываем миниатюру -->
-            <img
-              v-if="person.faceImageData"
-              :src="person.faceImageData"
-              alt="Фото"
-              width="50"
-            />
-            <!-- Иначе кнопка "Показать фото" -->
-            <button v-else @click="loadPhoto(person)">Показать фото</button>
-          </td>
-
-          <!-- Основные поля персоны -->
-          <td>{{ person.employeeNo }}</td>
-          <td>{{ person.name }}</td>
-          <td>{{ person.userType }}</td>
-          <td>   
-            <span v-if="person.RightPlan && person.RightPlan.length > 0">
-              [
-                {{ person.RightPlan.map(item => item.planTemplateNo).join(', ') }}
-              ]
-            </span>
-            <span v-else>
-              Нет планов
-            </span> 
-          </td>
-
-          <!-- "Три точки" + выпадающее меню -->
-          <td class="actions-td">
-            <div class="actions-wrapper">
-              <button class="dots-btn" @click.stop="toggleActions(index)">⋮</button>
-              <div
-                class="dropdown-content"
-                v-if="expandedRow === index"
-              >
-                <button @click="openEditModal(person)">Редактировать</button>
-                <button @click="deletePerson(person)">Удалить</button>
-              </div>
-            </div>
-          </td>
-        </tr>
-      </tbody>
-    </table>
-
-    <div v-else>
+    <!-- (4) Состояния загрузки/ошибки/нет данных/таблица -->
+    <div v-if="isLoading">
+      <p>Загрузка...</p>
+    </div>
+    <div v-else-if="isError">
+      <p>Произошла ошибка: {{ errorMessage }}</p>
+    </div>
+    <div v-else-if="persons.length === 0">
       <p>Нет персон (или не выбрано устройство).</p>
+    </div>
+    <div v-else>
+      <!-- (2) Таблица с персонами -->
+      <table class="excel-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Организация</th>
+            <th>Устройство</th>
+            <th>Фото</th>
+            <th>ИИН</th>
+            <th>Имя</th>
+            <th>Тип пользователя</th>
+            <th>№ графика</th>
+            <th style="text-align: center;">
+              <button @click="downloadAsExcel" class="excel-download-btn">
+                <img src="@/assets/download2.png" alt="Excel" width="20" />
+              </button>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Используем paginatedPersons вместо filteredPersons -->
+          <tr v-for="(person, index) in paginatedPersons" :key="index">
+            <td>{{ indexOnPage(index) }}</td>
+            <td>{{ getOrganizationName(person.organization_id) }}</td>
+            <td>{{ person.device_name }}</td>
+            <!-- Фото -->
+            <td>
+              <img
+                v-if="person.faceImageData"
+                :src="person.faceImageData"
+                alt="Фото"
+                width="50"
+              />
+              <button v-else @click="loadPhoto(person)">Показать фото</button>
+            </td>
+
+            <!-- Основные поля персоны -->
+            <td>{{ person.employeeNo }}</td>
+            <td>{{ person.name }}</td>
+            <td>{{ person.userType }}</td>
+            <td>
+              <span v-if="person.RightPlan && person.RightPlan.length > 0">
+                [ {{ person.RightPlan.map(item => item.planTemplateNo).join(', ') }} ]
+              </span>
+              <span v-else>Нет планов</span>
+            </td>
+
+            <!-- "Три точки" + выпадающее меню -->
+            <td class="actions-td">
+              <div class="actions-wrapper">
+                <button class="dots-btn" @click.stop="toggleActions(index)">⋮</button>
+                <div class="dropdown-content" v-if="expandedRow === index">
+                  <button @click="openEditModal(person)">Редактировать</button>
+                  <button @click="deletePerson(person)">Удалить</button>
+                </div>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- Пагинатор -->
+      <div class="paginator">
+        <button @click="prevPage" :disabled="currentPage === 1">Предыдущая</button>
+        <span>Страница {{ currentPage }} из {{ totalPages }}</span>
+        <button
+          @click="nextPage"
+          :disabled="currentPage === totalPages"
+        >
+          Следующая
+        </button>
+      </div>
     </div>
 
     <!-- (3) Модальное окно для добавления НОВОЙ персоны -->
@@ -138,16 +157,14 @@ import axios from 'axios'
 import PersonEditModal from './PersonEditModal.vue'
 import AddPersonModal from './AddPersonModal.vue'
 import vSelect from 'vue-select'
-import 'vue-select/dist/vue-select.css' // чтобы были стили
+import 'vue-select/dist/vue-select.css'
 
 import ExcelJS from 'exceljs'
 import { saveAs } from 'file-saver'
 
-
-
 export default {
   name: 'PersonList',
-  components: { PersonEditModal, AddPersonModal,vSelect },
+  components: { PersonEditModal, AddPersonModal, vSelect },
   data() {
     return {
       devices: [],
@@ -157,136 +174,121 @@ export default {
       editModalVisible: false,
       expandedRow: null,
 
-      showAddModal: false,  // управляет показом AddPersonModal
+      showAddModal: false,
 
       organizations: [],
       selectedOrganizations: [],
       searchIin: '',
+
+      // (4) Доп. состояния
+      isLoading: false,
+      isError: false,
+      errorMessage: '',
+
+      // (6) Для дебаунса
+      selectionChangeTimeout: null,
+
+      // (8) Пагинация (front-end)
+      currentPage: 1,
+      pageSize: 10, // например, по 10 на страницу
+
     }
   },
   computed: {
+    // Фильтрация устройств по выбранным организациям
     filteredDevices() {
-      // Если вообще не выбраны никакие организации, можно вернуть пустой массив
-      // или, например, вернуть все devices (зависит от логики).
       if (!this.selectedOrganizations.length) {
         return []
       }
-
-      // Собираем ID всех выбранных организаций
       const selectedOrgIds = this.selectedOrganizations.map(org => org.id)
-
-      // Фильтруем устройства: оставляем только те, у которых organizationId ∈ selectedOrgIds
       return this.devices.filter(device =>
         selectedOrgIds.includes(device.organization)
       )
     },
+    // Фильтр персон по searchIin
     filteredPersons() {
-      // Если ничего не введено — возвращаем исходный массив
       if (!this.searchIin) {
         return this.persons
       }
-
       const searchValue = this.searchIin.toLowerCase()
-
-      // Фильтруем по полю employeeNo (ИИН),
-      // предполагая, что оно может быть строкой.
       return this.persons.filter((p) => {
         if (!p.employeeNo) return false
-        // Приведём тоже к lowercase (если там строка)
         return p.employeeNo.toLowerCase().includes(searchValue)
       })
+    },
+    // (8) Получаем только нужный кусок (для текущей страницы)
+    paginatedPersons() {
+      const start = (this.currentPage - 1) * this.pageSize
+      const end = start + this.pageSize
+      return this.filteredPersons.slice(start, end)
+    },
+    // Для удобства — всего страниц
+    totalPages() {
+      return Math.ceil(this.filteredPersons.length / this.pageSize) || 1
     }
   },
-
   mounted() {
     this.fetchDevices()
     this.fetchOrganizations()
   },
   methods: {
-    async downloadAsExcel() {
-      try {
-        const workbook = new ExcelJS.Workbook()
-        const worksheet = workbook.addWorksheet('Persons')
+    // Утилита, чтобы нумерация в таблице не сбивалась при пагинации
+    indexOnPage(localIndex) {
+      return (this.currentPage - 1) * this.pageSize + (localIndex + 1)
+    },
 
-        // 1) Заголовок (первая строка)
-        worksheet.addRow([
-          'Organization',
-          'Device',
-          'IIN',
-          'Name',
-          'Тип пользователя', // Добавили
-          'График',          // Добавили
-          'Photo'            // Столбец, где картинка
-        ])
-
-        // 2) Заполняем данными
-        this.filteredPersons.forEach((person, index) => {
-          // Для «Графика» сформируем текст: либо [1,2,...], либо «Нет планов»
-          let plansText = 'Нет планов'
-          if (person.RightPlan && person.RightPlan.length > 0) {
-            // Пример: [1, 2, 5]
-            const planNumbers = person.RightPlan.map(item => item.planTemplateNo).join(', ')
-            plansText = `[${planNumbers}]`
-          }
-
-          // Добавляем «обычные» данные в виде массива (кроме картинки):
-          worksheet.addRow([
-            this.getOrganizationName(person.organization_id), // Organization
-            person.device_name,                               // Device
-            person.employeeNo,                                // IIN
-            person.name,                                      // Name
-            person.userType,                                  // Тип пользователя
-            plansText,                                        // График
-            '' // Пустая ячейка под картинку
-          ])
-
-          // Если есть Base64-фото, вставляем картинку
-          if (person.faceImageData) {
-            const base64Clean = person.faceImageData.split(',')[1] // убираем "data:image/jpeg;base64,"
-
-            const imageId = workbook.addImage({
-              base64: base64Clean,
-              extension: 'jpeg' // или 'png', если у вас PNG
-            })
-
-            // Номер строки (начиная со 2, т.к. 1-я занята заголовком)
-            const rowNumber = index + 2
-
-            // Номер колонки для фото (7-я колонка в нашем списке)
-            const colNumber = 7
-
-            // Вставляем картинку (координаты 0-based для tl)
-            worksheet.addImage(imageId, {
-              tl: { col: colNumber - 1, row: rowNumber - 1 },
-              ext: { width: 60, height: 60 } // можно регулировать
-            })
-          }
-        })
-
-        // 3) Сохраняем Workbook
-        const buffer = await workbook.xlsx.writeBuffer()
-        saveAs(new Blob([buffer]), 'persons.xlsx')
-      } catch (error) {
-        console.error('Ошибка при экспорте в Excel:', error)
+    // Пагинация (front-end)
+    prevPage() {
+      if (this.currentPage > 1) {
+        this.currentPage--
       }
     },
-    async fetchOrganizations() {
+    nextPage() {
+      if (this.currentPage < this.totalPages) {
+        this.currentPage++
+      }
+    },
+
+    getOrganizationName(orgId) {
+      const org = this.organizations.find(o => o.id === orgId)
+      return org ? org.name : 'N/A'
+    },
+
+    // (4) Добавим загрузку/ошибку
+    async fetchDevices() {
+      this.isLoading = true
+      this.isError = false
+      this.errorMessage = ''
       try {
-        // 1) Получаем информацию о текущем пользователе
-        const userResponse = await axios.get('/api/user_info/');
-        const user = userResponse.data;
+        const response = await axios.get('/api/devices/')
+        this.devices = response.data
+        // По желанию, сразу подгружаем персоны
+        this.fetchPersons()
+      } catch (error) {
+        this.isError = true
+        this.errorMessage = 'Ошибка при загрузке устройств: ' + error
+      } finally {
+        this.isLoading = false
+      }
+    },
 
+    // (4) Аналогично
+    async fetchOrganizations() {
+      this.isLoading = true
+      this.isError = false
+      this.errorMessage = ''
+      try {
+        const userResponse = await axios.get('/api/user_info/')
+        const user = userResponse.data
         if (!user.organization) {
-          console.warn('У пользователя не указана организация');
-          this.organizations = [];
-          this.selectedOrganizations = [];
-          return;
+          console.warn('У пользователя не указана организация')
+          this.organizations = []
+          this.selectedOrganizations = []
+          return
         }
+        const userOrgId = user.organization.id
+        const isMain = user.organization.is_main
 
-        const userOrgId = user.organization.id;
-        const isMain = user.organization.is_main;
-
-        // 2) Если это главная организация -> получить список дочерних
         if (isMain) {
           const orgsResponse = await axios.get(`/api/organizations/?parent_id=${userOrgId}`);
           this.organizations = orgsResponse.data || [];
@@ -298,96 +300,67 @@ export default {
           // По умолчанию сразу выбираем её же
           this.selectedOrganizations = [user.organization];
         }
-      } catch (error) {
-        console.error('Ошибка при загрузке организаций:', error);
-        this.organizations = [];
-        this.selectedOrganizations = [];
-      }
-    },
-    getOrganizationName(orgId) {
-      // Ищем в массиве organizations (либо в другом массиве, где у вас есть инфа)
-      const org = this.organizations.find(o => o.id === orgId)
-      return org ? org.name : 'N/A'
-    },
-
-  
-    async fetchDevices() {
-      try {
-        const response = await axios.get('/api/devices/')
-        this.devices = response.data
-        
-        // Если хотим сразу при загрузке выбрать первое устройство в качестве дефолта:
-        // if (this.devices.length > 0) {
-        //   // Например, сохраним целиком объект первого устройства в массив:
-        //   this.selectedDevices = [ this.devices[0] ]
-        //   // Или, если вы храните только IDs, то: this.selectedDevices = [ this.devices[0].id ]
-        // }
-
-        // Если нужно сразу подгрузить персоны — вызываем fetchPersons()
-        this.fetchPersons()
 
       } catch (error) {
-        console.error('Ошибка при загрузке устройств:', error)
+        this.isError = true
+        this.errorMessage = 'Ошибка при загрузке организаций: ' + error
+      } finally {
+        this.isLoading = false
       }
     },
+
+    // (4)fetchPersons с кэшированием faceImageData
     async fetchPersons() {
-      // Если не выбрано ни одного устройства, очищаем список
       if (!this.selectedDevices.length) {
         this.persons = []
         return
       }
 
+      this.isLoading = true
+      this.isError = false
+      this.errorMessage = ''
       this.expandedRow = null
+
+
       try {
-        // Выполняем параллельные GET-запросы на /api/devices/{deviceId}/persons/
         const responses = await Promise.all(
           this.selectedDevices.map(device =>
             axios.get(`/api/devices/${device.id}/persons/`)
           )
         )
 
-        // // Объединяем (конкатенируем) все полученные списки персон
-        // const allPersons = responses.flatMap(res => res.data)
-        // // Добавляем поля faceImageData и hasFaceOnDevice, как раньше
-        // this.persons = allPersons.map(p => ({
-        //   ...p,
-        //   faceImageData: p.faceImageData || null,
-        //   hasFaceOnDevice: !!p.faceImageData
-        // }))
-
-        const allPersons = responses.flatMap((res, index) => {
-          const device = this.selectedDevices[index]
+        // Сконкатенируем результаты, добавим поля для удобства
+        const allPersons = responses.flatMap((res, idx) => {
+          const device = this.selectedDevices[idx]
           return res.data.map(person => ({
             ...person,
             device_id: device.id,
-            device_name: device.name, 
+            device_name: device.name,
             organization_id: device.organization,
-            faceImageData: person.faceImageData || null,
-            hasFaceOnDevice: !!person.faceImageData
+            faceImageData: null, // по умолчанию пусто
           }))
         })
 
+     
+
         this.persons = allPersons
-
-        console.log('persons:', this.persons)
-
-
       } catch (error) {
-        console.error('Ошибка при загрузке персон:', error)
+        this.isError = true
+        this.errorMessage = 'Ошибка при загрузке персон: ' + error
+      } finally {
+        this.isLoading = false
       }
     },
 
 
-    // (A) Обработчик когда новая персона создана в AddPersonModal
+    // (A) после добавления новой персоны
     handlePersonCreated() {
       this.showAddModal = false
-      // Обновим список персон, если нужно
       this.fetchPersons()
     },
 
     openEditModal(person) {
       this.expandedRow = null
-      // Копия данных + флаг наличия фото
       const copy = JSON.parse(JSON.stringify(person))
       copy.hasFaceOnDevice = person.hasFaceOnDevice
       this.editedPerson = copy
@@ -398,14 +371,18 @@ export default {
       this.fetchPersons()
     },
 
-
     async deletePerson(person) {
       if (!person.device_id) return
       this.expandedRow = null
       try {
-        await axios.delete(`/api/devices/${person.device_id}/persons/${person.employeeNo}/`)
+        await axios.delete(
+          `/api/devices/${person.device_id}/persons/${person.employeeNo}/`
+        )
+
         this.fetchPersons()
-      } catch (error) { console.error('Ошибка при удалении персоны:', error)}
+      } catch (error) {
+        console.error('Ошибка при удалении персоны:', error)
+      }
     },
 
     async loadPhoto(person) {
@@ -416,7 +393,11 @@ export default {
           { params: { face_lib_type: 'blackFD', fdid: '1' } }
         )
         const faceData = responseFace.data
-        if (faceData.numOfMatches > 0 && faceData.MatchList && faceData.MatchList.length > 0) {
+        if (
+          faceData.numOfMatches > 0 &&
+          faceData.MatchList &&
+          faceData.MatchList.length > 0
+        ) {
           const match = faceData.MatchList[0]
           if (match.faceURL) {
             const proxyResp = await axios.get(
@@ -424,7 +405,8 @@ export default {
               { params: { face_url: match.faceURL } }
             )
             if (proxyResp.data.image_data) {
-              person.faceImageData = 'data:image/jpeg;base64,' + proxyResp.data.image_data
+              const fullBase64 = 'data:image/jpeg;base64,' + proxyResp.data.image_data
+              person.faceImageData = fullBase64
               person.hasFaceOnDevice = true
             }
           }
@@ -433,8 +415,84 @@ export default {
         console.error('Ошибка при загрузке фото:', error)
       }
     },
+
     toggleActions(rowIndex) {
       this.expandedRow = this.expandedRow === rowIndex ? null : rowIndex
+    },
+
+    // (6) Следим за изменением выбора организаций/устройств с дебаунсом
+    handleSelectionChange() {
+      if (this.selectionChangeTimeout) {
+        clearTimeout(this.selectionChangeTimeout)
+      }
+      this.selectionChangeTimeout = setTimeout(() => {
+        // Сбросим текущую страницу при смене фильтров, если нужно
+        this.currentPage = 1
+        // Удалим из selectedDevices те, которых нет во `filteredDevices`
+        const filtered = this.filteredDevices.map(d => d.id)
+        this.selectedDevices = this.selectedDevices.filter(device =>
+          filtered.includes(device.id)
+        )
+        // Загружаем персоны
+        this.fetchPersons()
+      }, 500)
+    },
+
+    // (8) Экспорт Excel (без изменений, кроме того, что используем this.filteredPersons)
+    async downloadAsExcel() {
+      try {
+        const workbook = new ExcelJS.Workbook()
+        const worksheet = workbook.addWorksheet('Persons')
+
+        worksheet.addRow([
+          'Organization',
+          'Device',
+          'IIN',
+          'Name',
+          'Тип пользователя',
+          'График',
+          'Photo'
+        ])
+
+        this.filteredPersons.forEach((person, index) => {
+          let plansText = 'Нет планов'
+          if (person.RightPlan && person.RightPlan.length > 0) {
+            const planNumbers = person.RightPlan
+              .map(item => item.planTemplateNo)
+              .join(', ')
+            plansText = `[${planNumbers}]`
+          }
+
+          worksheet.addRow([
+            this.getOrganizationName(person.organization_id),
+            person.device_name,
+            person.employeeNo,
+            person.name,
+            person.userType,
+            plansText,
+            '' // для картинки
+          ])
+
+          if (person.faceImageData) {
+            const base64Clean = person.faceImageData.split(',')[1]
+            const imageId = workbook.addImage({
+              base64: base64Clean,
+              extension: 'jpeg'
+            })
+            const rowNumber = index + 2
+            const colNumber = 7
+            worksheet.addImage(imageId, {
+              tl: { col: colNumber - 1, row: rowNumber - 1 },
+              ext: { width: 60, height: 60 }
+            })
+          }
+        })
+
+        const buffer = await workbook.xlsx.writeBuffer()
+        saveAs(new Blob([buffer]), 'persons.xlsx')
+      } catch (error) {
+        console.error('Ошибка при экспорте в Excel:', error)
+      }
     }
   },
   watch: {
@@ -464,51 +522,43 @@ export default {
   margin-top: 4rem;
   margin-bottom: 1rem;
 }
-
 .device-selector {
   margin-bottom: 2rem;
 }
 .title {
-  color: #294358;;
+  color: #294358;
   margin-top: 2rem;
   margin-bottom: 4rem;
   text-align: center;
 }
-
 .iinSearch {
   margin-top: 1rem;
   margin-bottom: 1rem;
 }
-/* Можно стилизовать кнопку Добавить */
 .add-person-btn {
   margin-top: 1rem;
   margin-bottom: 1rem;
   padding: 0.4rem 0.8rem;
   cursor: pointer;
 }
-
 .person-table {
   width: 100%;
   border-collapse: collapse;
   margin: 1rem 0;
 }
-
 .person-table th,
 .person-table td {
   border: 1px solid #ddd;
   padding: 8px;
   text-align: left;
 }
-
 .actions-td {
   position: relative;
 }
-
 .actions-wrapper {
   display: inline-block;
   position: relative;
 }
-
 .dots-btn {
   background: none;
   border: none;
@@ -516,7 +566,6 @@ export default {
   cursor: pointer;
   padding: 4px;
 }
-
 .dropdown-content {
   position: absolute;
   top: 2em;
@@ -528,7 +577,6 @@ export default {
   display: flex;
   flex-direction: column;
 }
-
 .dropdown-content button {
   background: none;
   border: none;
@@ -536,51 +584,45 @@ export default {
   text-align: left;
   cursor: pointer;
 }
-
 .dropdown-content button:hover {
   background: #f0f0f0;
 }
-
 .refresh-btn {
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem; /* Расстояние между иконкой и текстом */
+  gap: 0.4rem;
   cursor: pointer;
-  
   float: right;
-  margin-left: 10px; /* Чтобы чуть отодвинуть кнопку от возможных элементов слева */
-
+  margin-left: 10px;
 }
-
 .refresh-btn .icon {
   width: 20px;
   height: 20px;
 }
-
 .excel-table {
-  border-collapse: collapse;  /* Убираем двойные границы */
+  border-collapse: collapse;
   width: 100%;
-  font-family: Arial, sans-serif; /* Или любая другая */
+  font-family: Arial, sans-serif;
 }
-
 .excel-table th,
 .excel-table td {
-  border: 1px solid #d0d0d0; /* Серые границы, как в Excel */
+  border: 1px solid #d0d0d0;
   padding: 8px;
   text-align: left;
 }
-
 .excel-table thead {
-  background-color: #f0f0f0; /* светло-серый фон для заголовков */
+  background-color: #f0f0f0;
 }
-
 .excel-table tr:nth-child(even) td {
-  background-color: #fafafa; /* полосатые строки */
+  background-color: #fafafa;
 }
-
 .excel-table tr:hover td {
-  background-color: #e8f0fe; /* подсветка при hover */
+  background-color: #e8f0fe;
 }
-
-
+.paginator {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  margin-top: 1rem;
+}
 </style>

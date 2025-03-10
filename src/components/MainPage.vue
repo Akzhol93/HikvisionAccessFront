@@ -50,25 +50,28 @@
 
     <!-- Основная область контента -->
     <main class="content-area">
-      <section v-if="activeTab === 'devices'">
-        <DeviceList />
-      </section>
+      <transition name="fade" mode="out-in">
+        <section v-if="activeTab === 'devices'">
+          <DeviceList />
+        </section>
 
-      <section v-else-if="activeTab === 'persons'">
-        <PersonList />
-      </section>
+        <section v-else-if="activeTab === 'persons'">
+          <PersonList />
+        </section>
 
-      <section v-else-if="activeTab === 'reportDetail'">
-        <ReportDetail />
-      </section>
+        <section v-else-if="activeTab === 'reportDetail'">
+          <ReportDetail />
+        </section>
 
-      <section v-else-if="activeTab === 'reportBI'">
-        <ReportBI />
-      </section>
+        <section v-else-if="activeTab === 'reportBI'">
+          <ReportBI />
+        </section>
 
-      <section v-else-if="activeTab === 'orginfo'">
-        <OrgProfile />
-      </section>
+        <section v-else-if="activeTab === 'orginfo'">
+          <OrgProfile />
+        </section>
+      </transition>
+
     </main>
   </div>
 </template>
@@ -184,5 +187,14 @@ export default {
 }
 .logout-btn:hover {
   background: #c0392b;
+}
+
+.fade-enter-active, .fade-leave-active {
+  transition: opacity 0.4s, transform 0.3s ease-in-out;
+}
+
+.fade-enter, .fade-leave-to {
+  opacity: 0;
+  transform: translateY(10px);
 }
 </style>

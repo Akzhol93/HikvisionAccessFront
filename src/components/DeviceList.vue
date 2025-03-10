@@ -2,6 +2,10 @@
   <div class="device-list">
     <h1 class="title">Устройства контроля доступа</h1>
 
+    <button class="refresh-btn" @click="fetchDevices">
+      <i class="fas fa-sync-alt"></i> Обновить список
+    </button>
+
     <!-- 1) Если идёт загрузка -->
     <div v-if="loading" class="loading">Загрузка...</div>
 
@@ -14,87 +18,56 @@
     <div v-else>
       <!-- Если есть устройства -->
       <div v-if="devices.length">
-        <!-- Карточки устройств -->
         <div v-for="device in devices" :key="device.id" class="device-card">
-          <!-- Блок .device-header стал кликабельным -->
           <div class="device-header" @click="device.showSchedules = !device.showSchedules">
-
+            
             <div class="device-icon-wrapper">
-              <img
-                src="@/assets/hikvision.png"
-                alt="Device Icon"
-                class="device-icon"
-              />
-              <!-- Статус -->
-              <div
-                class="device-status"
-                :class="device.is_online ? 'status-online' : 'status-offline'"
-              >
-                {{ device.is_online ? 'online' : 'offline' }}
+              <img src="@/assets/hikvision.png" alt="Device Icon" class="device-icon" />
+              <div class="device-status" :class="device.is_online ? 'status-online' : 'status-offline'">
+                <i :class="device.is_online ? 'fas fa-check-circle' : 'fas fa-times-circle'"></i>
+                {{ device.is_online ? 'Online' : 'Offline' }}
               </div>
             </div>
 
-            <!-- <img src="@/assets/hikvision.png" alt="Device Icon" class="device-icon"/> -->
-            <h3 class="device-name">  {{ device.name }}</h3>
-            
+            <h3 class="device-name">{{ device.name }}</h3>
             <h5 class="organization-name">{{ getOrganizationName(device.organization) }}</h5>
             
-     
+            <i :class="device.showSchedules ? 'fas fa-chevron-up' : 'fas fa-chevron-down'" class="expand-arrow"></i>
           </div>
 
-          <!-- Блок расписаний: показывать только если device.showSchedules=true -->
           <transition name="fade">
             <div v-if="device.showSchedules" class="schedules-container">
-              <!-- 3 шаблона расписаний: scheduleId = 1, 2, 3 -->
-              <div
-                v-for="scheduleId in [1, 2, 3]"
-                :key="scheduleId"
-                class="schedule-template"
-              >
+              <div v-for="scheduleId in [1, 2, 3]" :key="scheduleId" class="schedule-template">
                 <h3>Расписание №{{ scheduleId }}</h3>
 
                 <div v-if="device.schedules && device.schedules[scheduleId]">
-                  <!-- ON/OFF toggle вместо enable -->
                   <div class="enable-toggle">
                     <label class="switch">
-                      <input 
-                        type="checkbox" 
-                        :checked="device.schedules[scheduleId].enable"
-                        @change="toggleScheduleEnable(device, scheduleId, $event.target.checked)" 
-                      />
+                      <input type="checkbox" :checked="device.schedules[scheduleId].enable"
+                            @change="toggleScheduleEnable(device, scheduleId, $event.target.checked)" />
                       <span class="slider round"></span>
                     </label>
                     <span>{{ device.schedules[scheduleId].enable ? 'Включено' : 'Выключено' }}</span>
                   </div>
-
-                  <!-- Выводим дни недели (только id=1) -->
+                  
                   <div class="weekplan-days" v-if="device.schedules[scheduleId].weekPlan">
-                    <div
-                      v-for="(wpDay, idx) in device.schedules[scheduleId].weekPlan"
-                      :key="idx"
-                      class="weekplan-day"
-                    >
+                    <div v-for="(wpDay, idx) in device.schedules[scheduleId].weekPlan" :key="idx" class="weekplan-day">
                       <strong>{{ getRusDayName(wpDay.week) }}:</strong>
-                      <span v-if="wpDay.enable">
-                        {{ wpDay.TimeSegment.beginTime }} - {{ wpDay.TimeSegment.endTime }}
-                      </span>
+                      <span v-if="wpDay.enable">{{ wpDay.TimeSegment.beginTime }} - {{ wpDay.TimeSegment.endTime }}</span>
                       <span v-else>Выключено</span>
                     </div>
                   </div>
 
-                  <!-- Кнопка "Изменить" -->
                   <button class="edit-btn" @click="editSchedule(device, scheduleId)">
-                    Изменить
+                    <i class="fas fa-edit"></i> Изменить
                   </button>
-                </div>
-                <div v-else>
-                  <em>Данные по scheduleId={{ scheduleId }} загружаются...</em>
                 </div>
               </div>
             </div>
           </transition>
         </div>
       </div>
+
       <!-- Иначе, если устройств нет, но нет загрузки/ошибки -->
       <p v-else>
         Нет доступных устройств.
@@ -302,11 +275,33 @@ export default {
 <style scoped>
 
 .title {
-  color: #294358;;
-  margin-top: 2rem;
-  margin-bottom: 4rem;
+  font-size: 28px; /* Крупный размер */
+  font-weight: bold;
+  color: #2c3e50; /* Темно-синий цвет */
   text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 16px 0;
+  position: relative;
 }
+
+.title::after {
+  content: "";
+  display: block;
+  width: 80px;
+  height: 4px;
+  background: linear-gradient(to right, #42b983, #2c3e50); /* Градиентная линия */
+  margin: 8px auto;
+  border-radius: 2px;
+}
+
+@media (max-width: 768px) {
+  .title {
+    font-size: 22px; /* Меньше на мобильных */
+  }
+}
+
+
 
 
 .loading {
@@ -393,6 +388,9 @@ input:checked + .slider:before {
   transform: translateX(16px);
 }
 
+
+
+
 /* Кнопка "Изменить" */
 .edit-btn {
   margin-top: 8px;
@@ -413,12 +411,23 @@ input:checked + .slider:before {
 }
 
 /* Плавная анимация при появлении/исчезновении (transition "fade") */
-.fade-enter-active, .fade-leave-active {
-  transition: opacity .3s;
+
+.fade-enter-active {
+  transition: max-height 0.4s ease-in-out, opacity 0.3s ease-in-out;
+  max-height: 500px;
 }
+
+.fade-leave-active {
+  transition: max-height 0.3s ease-in-out, opacity 0.2s ease-in-out;
+  max-height: 0;
+}
+
 .fade-enter, .fade-leave-to {
   opacity: 0;
 }
+
+
+
 
 .device-list {
   padding: 16px;
@@ -427,26 +436,39 @@ input:checked + .slider:before {
 
 /* Общие стили карточки */
 .device-card {
-  background: #fff;
-  border: 1px solid #ccc;
+  background: #ffffff;
+  border-radius: 10px;
+  padding: 16px;
   margin-bottom: 16px;
-  padding: 12px;
-  border-radius: 6px;
+  box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease-in-out;
+}
+.device-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0px 6px 10px rgba(0, 0, 0, 0.15);
 }
 
-/* Заголовок устройства в виде сетки */
+
 .device-header {
-  display: grid;
-  /* Настраиваем ширину колонок:
-     200px для организации, 
-     80px для иконки, 
-     1fr для названия (т.е. "всё оставшееся место"),
-     40px под стрелочку (или сколько нужно). */
-  grid-template-columns: 80px 400px 1fr 40px;
-  align-items: center;  /* Выравниваем по центру по вертикали */
-  cursor: pointer;
-  gap: 8px; /* Отступы между «ячейками» */
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
 }
+
+@media (max-width: 768px) {
+  .device-header {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .device-name {
+    font-size: 16px;
+  }
+}
+
 
 .organization-name {
   /* Можно добавить text-overflow, если слишком длинное имя */
@@ -479,19 +501,45 @@ input:checked + .slider:before {
   flex-direction: column;
   align-items: center; /* Центровка */
 }
-/* Статус */
-.device-status {
-  margin-top: 4px;
+
+.device-name {
+  font-size: 18px;
   font-weight: bold;
-  font-size: 0.85rem;
+  color: #294358;
+}
+
+.device-status {
+  margin-top: 1rem;
+  font-size: 14px;
+  font-weight: bold;
+  text-transform: uppercase;
 }
 
 .status-online {
-  color: green;
+  color: #28a745;
 }
 
 .status-offline {
-  color: red;
+  color: #dc3545;
+}
+
+.refresh-btn {
+  background: #42b983;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  font-size: 16px;
+  border-radius: 5px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background 0.3s ease;
+  margin-bottom: 2rem;
+}
+
+.refresh-btn:hover {
+  background: #369e6f;
 }
 
 
