@@ -4,37 +4,43 @@
 
     <div class="filter">
       <div class="org-selector">
-        <label>Выберите организацию:</label>
         <v-select
           v-model="selectedOrganizations"
           :options="organizations"
           label="name"
           multiple
           :closeOnSelect="false"
+          placeholder="Выберите организацию"
         />
       </div>
 
       <div class="device-selector">
-        <label>Выберите устройство:</label>
         <v-select
           v-model="selectedDevices"
           :options="filteredDevices"
           label="name"
           multiple
           :closeOnSelect="false"
+          placeholder="Выберите устроиство"
+          :loading="isLoading"
         />
       </div>
-    </div>
 
-    <div class="iinSearch" v-if="selectedDevices.length > 0">
+      <div class="iinSearch">
         <label for="iinSearch">Поиск по ИИН:</label>
         <input
           id="iinSearch"
           v-model="searchIin"
           type="text"
           placeholder="Введите ИИН для поиска"
+          :disabled="selectedDevices.length === 0"
         />
+        
     </div>
+
+    </div>
+
+
 
     <!-- Кнопка обновления списка персон -->
     <button
