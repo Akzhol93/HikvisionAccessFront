@@ -1,5 +1,5 @@
 <template>
-  <h1 class="title">Организация</h1>
+  <h1 class="title">Информация об организации</h1>
     <div class="container">
 
 

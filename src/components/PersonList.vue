@@ -4,7 +4,7 @@
 
     <div class="filter">
       <div class="org-selector filter-item">
-        <label>Выберите организацию:</label>
+        <label>1. Выберите организацию:</label>
         <CustomMultiSelect
           v-model="selectedOrganizations"
           :options="organizations"
@@ -14,7 +14,7 @@
       </div>
 
       <div class="device-selector filter-item">
-        <label>Выберите устроиства:</label>
+        <label>2. Выберите устроиства:</label>
         <CustomMultiSelect
           v-model="selectedDevices"
           :options="filteredDevices"
@@ -25,7 +25,7 @@
       </div>
 
       <div class="iinSearch filter-item">
-        <label for="iinSearch">Поиск по ИИН:</label>
+        <label for="iinSearch">3. Поиск по ИИН:</label>
         <input
           id="iinSearch"
           v-model="searchIin"

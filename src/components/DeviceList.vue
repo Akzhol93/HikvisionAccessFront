@@ -2,7 +2,9 @@
   <div class="device-list">
     <h1 class="title">Устройства контроля доступа</h1>
 
-    <button class="refresh-btn" @click="fetchDevices">
+    <button class="refresh-btn" 
+            :class="{ 'refreshing': isRefreshing }"
+            @click="onRefreshClick">
       <img src="@/assets/update.png" alt="Обновить" class="icon" /> Обновить список
     </button>
 
@@ -99,6 +101,7 @@ export default {
       devices: [],
       loading: false,
       error: null,
+      isRefreshing: false,
 
       // Для модалки редактирования
       isScheduleModalOpen: false,
@@ -157,6 +160,13 @@ export default {
       const foundOrg = this.organizations.find(o => o.id === orgId)
       return foundOrg ? foundOrg.name : `Орг. #${orgId}` // Если не нашли, хотя бы вернём ID
     },
+    // Обработчик клика по кнопке "Обновить список"
+    onRefreshClick() {
+      // Сбрасываем ошибку, флаг загрузки и включаем анимацию
+      this.error = null
+      this.isRefreshing = true
+      this.fetchDevices()
+    },
     fetchDevices() {
       this.loading = true
       this.error = null
@@ -179,6 +189,7 @@ export default {
         })
         .finally(() => {
           this.loading = false
+          this.isRefreshing = false
         })
     },
     loadSchedulesForAllDevices() {
@@ -442,6 +453,7 @@ input:checked + .slider:before {
   margin-bottom: 16px;
   box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
   transition: all 0.3s ease-in-out;
+  
 }
 .device-card:hover {
   transform: translateY(-3px);
@@ -455,6 +467,7 @@ input:checked + .slider:before {
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 12px;
+  cursor: pointer;
 }
 
 @media (max-width: 768px) {
@@ -522,7 +535,7 @@ input:checked + .slider:before {
 .status-offline {
   color: #dc3545;
 }
-
+/* Кнопка "Обновить список" */
 .refresh-btn {
   background: #28a745;
   color: white;
@@ -537,15 +550,30 @@ input:checked + .slider:before {
   transition: background 0.3s ease;
   margin-bottom: 2rem;
 }
-
 .refresh-btn:hover {
   background: #369e6f;
 }
-
 .refresh-btn .icon {
   width: 20px;
   height: 20px;
 }
 
+/* 
+  При обновлении (isRefreshing=true) 
+  добавим класс 'refreshing' 
+  и заставим иконку вращаться 
+*/
+.refresh-btn.refreshing .icon {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  } 
+  to {
+    transform: rotate(360deg);
+  }
+}
 
 </style>
