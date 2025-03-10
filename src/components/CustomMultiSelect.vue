@@ -23,12 +23,14 @@
           class="custom-multiselect__option"
           v-for="(option, index) in options"
           :key="optionKey(option, index)"
-          @click="toggleOption(option)"
+          :class="{ offline: option.is_online === false }"
+          @click="onOptionClick(option)"
         >
           <!-- Сам чекбокс -->
           <input
             type="checkbox"
             :checked="isSelected(option)"
+            :disabled="option.is_online === false"
             class="option-checkbox"
           />
           <!-- Текст рядом -->
@@ -107,6 +109,14 @@ export default {
     document.removeEventListener('click', this.handleClickOutside)
   },
   methods: {
+    onOptionClick(option) {
+      // Если устройство офлайн — ничего не делаем
+      if (option.is_online === false) {
+        return
+      }
+      // Иначе выполняем стандартную логику
+      this.toggleOption(option)
+    },
     toggleDropdown() {
       if (this.disabled) return
       this.isOpen = !this.isOpen
@@ -242,5 +252,13 @@ export default {
 }
 .arrow.open {
   transform: rotate(180deg);
+}
+.offline {
+  background-color: red;
+  /* чтобы визуально показать "некликабельность" —
+     можно уменьшить прозрачность или курсор поменять */
+  opacity: 0.8;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 </style>
