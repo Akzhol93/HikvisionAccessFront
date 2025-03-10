@@ -3,33 +3,28 @@
     <h1 class="title">Список персон</h1>
 
     <div class="filter">
-      <div class="org-selector">
-        <v-select
+      <div class="org-selector filter-item">
+        <label>Выберите организацию:</label>
+        <CustomMultiSelect
           v-model="selectedOrganizations"
           :options="organizations"
-          label="name"
-          multiple
-          :searchable="true"
-          :closeOnSelect="false"
-          placeholder="Выберите организацию"
+          label-prop="name"
+          option-key-prop="id"
         />
       </div>
 
-      <div class="device-selector">
-        <v-select
+      <div class="device-selector filter-item">
+        <label>Выберите устроиства:</label>
+        <CustomMultiSelect
           v-model="selectedDevices"
           :options="filteredDevices"
-          label="name"
-          multiple
-          :closeOnSelect="false"
-          placeholder="Выберите устроиство"
-          :loading="isLoading"
+          label-prop="name"
+          option-key-prop="id"
           :disabled="selectedOrganizations.length === 0"
-          v-tooltip="'Сначала выберите организацию'"
         />
       </div>
 
-      <div class="iinSearch">
+      <div class="iinSearch filter-item">
         <label for="iinSearch">Поиск по ИИН:</label>
         <input
           id="iinSearch"
@@ -38,10 +33,9 @@
           placeholder="Введите ИИН для поиска"
           :disabled="selectedDevices.length === 0"
         />
-        
+      </div>
     </div>
 
-    </div>
 
 
 
@@ -149,9 +143,9 @@
 
         <label for="pageSize">Кол-во записей на странице:</label>
         <select v-model="pageSize" id="pageSize">
-          <option :value="20">20</option>
           <option :value="50">50</option>
           <option :value="100">100</option>
+          <option :value="250">250</option>
           <option :value="500">500</option>
         </select>
       </div>
@@ -179,16 +173,16 @@
 import axios from 'axios'
 import PersonEditModal from './PersonEditModal.vue'
 import AddPersonModal from './AddPersonModal.vue'
-import vSelect from 'vue-select'
 import 'vue-select/dist/vue-select.css'
 
 import ExcelJS from 'exceljs'
 import { saveAs } from 'file-saver'
+import CustomMultiSelect from '@/components/CustomMultiSelect.vue'
 
 
 export default {
   name: 'PersonList',
-  components: { PersonEditModal, AddPersonModal, vSelect },
+  components: { PersonEditModal, AddPersonModal, CustomMultiSelect},
   data() {
     return {
       devices: [],
@@ -213,7 +207,7 @@ export default {
 
       // (8) Пагинация (front-end)
       currentPage: 1,
-      pageSize: 20, // например, по 10 на страницу
+      pageSize: 50, // например, по 10 на страницу
 
     }
   },
@@ -533,9 +527,6 @@ export default {
 </script>
 
 <style scoped>
-.org-selector,  .device-selector{
-  margin-top: 2rem;
-}
 
 .title {
   font-size: 28px; /* Крупный размер */
@@ -556,13 +547,10 @@ export default {
   margin: 8px auto;
   border-radius: 2px;
 }
-.iinSearch {
-  margin-top: 1rem;
-  margin-bottom: 1rem;
-}
+
 
 .add-person-btn {
-  margin-top: 1rem;
+  margin-top: 4rem;
   margin-bottom: 1rem;
   padding: 0.6rem 1rem;
   cursor: pointer;
@@ -575,6 +563,31 @@ export default {
 
 .add-person-btn:hover {
   background-color: #0056b3;
+}
+
+.refresh-btn {
+  margin-top: 4rem;
+  margin-bottom: 1rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: pointer;
+  float: right;
+  background: #28a745;
+  color: white;
+  padding: 0.6rem 1rem;
+  border: none;
+  border-radius: 5px;
+  transition: background 0.3s ease-in-out;
+}
+
+.refresh-btn:hover {
+  background: #218838;
+}
+
+.refresh-btn .icon {
+  width: 20px;
+  height: 20px;
 }
 
 .person-table {
@@ -601,35 +614,19 @@ export default {
 
 .edit-btn {
   /* какие-то стили для иконки редактирования */
+  margin: 0%;
+  padding: 0%;
 }
 
 .delete-btn {
   /* какие-то стили для иконки удаления */
-}
-
-
-.refresh-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  cursor: pointer;
+  margin: 0%;
+  padding: 0%;
   float: right;
-  background: #28a745;
-  color: white;
-  padding: 0.6rem 1rem;
-  border: none;
-  border-radius: 5px;
-  transition: background 0.3s ease-in-out;
 }
 
-.refresh-btn:hover {
-  background: #218838;
-}
 
-.refresh-btn .icon {
-  width: 20px;
-  height: 20px;
-}
+
 
 .excel-table {
   border-collapse: collapse;
@@ -662,10 +659,6 @@ export default {
   font-size: 0.85rem;
 }
 
-.org-selector, .device-selector {
-  margin-top: 1.5rem;
-}
-
 
 
 /* Медиа-запрос для мобильных устройств */
@@ -683,5 +676,82 @@ export default {
 
 }
 
+
+
+
+
+.filter {
+  background: #f8f9fa; /* Светлый фон */
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1); /* Тень для эффекта карточки */
+}
+
+.org-selector,
+.device-selector,
+.iinSearch {
+  flex: 1;
+  min-width: 200px;
+  display: flex;
+  flex-direction: column;
+}
+
+.iinSearch label {
+  font-weight: bold;
+  margin-bottom: 6px;
+}
+.org-selector label {
+  font-weight: bold;
+  margin-bottom: 6px;
+}
+.device-selector label {
+  font-weight: bold;
+  margin-bottom: 6px;
+}
+
+.iinSearch input {
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 14px;
+  transition: all 0.3s ease;
+}
+
+.iinSearch input:focus {
+  border-color: #007BFF;
+  outline: none;
+  box-shadow: 0 0 4px rgba(0, 123, 255, 0.3);
+}
+
+
+.org-selector select,
+.device-selector select {
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 14px;
+  transition: all 0.3s ease;
+}
+
+.org-selector select:focus,
+.device-selector select:focus {
+  border-color: #28a745;
+  outline: none;
+  box-shadow: 0 0 4px rgba(40, 167, 69, 0.3);
+}
+
+/* Адаптивность: на мобильных устройствах фильтры идут в колонку */
+@media (max-width: 768px) {
+  .filter {
+    flex-direction: column;
+    gap: 12px;
+    padding: 12px;
+  }
+}
 
 </style>
