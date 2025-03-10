@@ -25,10 +25,8 @@
           placeholder="Выберите устроиство"
           :loading="isLoading"
           :disabled="selectedOrganizations.length === 0"
+          v-tooltip="'Сначала выберите организацию'"
         />
-        <small v-if="selectedOrganizations.length === 0" class="warning-text">
-          Сначала выберите организацию
-        </small>
       </div>
 
       <div class="iinSearch">
@@ -122,15 +120,17 @@
               <span v-else>Нет планов</span>
             </td>
 
-            <!-- "Три точки" + выпадающее меню -->
+   
             <td class="actions-td">
-              <div class="actions-wrapper">
-                <button class="dots-btn" @click.stop="toggleActions(index)">⋮</button>
-                <div class="dropdown-content" v-if="expandedRow === index">
-                  <button @click="openEditModal(person)">Редактировать</button>
-                  <button @click="deletePerson(person)">Удалить</button>
-                </div>
-              </div>
+              <!-- Кнопка "Редактировать" -->
+              <button class="edit-btn" @click="openEditModal(person)">
+                <img src="@/assets/edit.png" alt="Edit" width="20" />
+              </button>
+
+              <!-- Кнопка "Удалить" -->
+              <button class="delete-btn" @click="deletePerson(person)">
+                <img src="@/assets/delete.png" alt="Delete" width="20" />
+              </button>
             </td>
           </tr>
         </tbody>
@@ -196,7 +196,6 @@ export default {
       persons: [],
       editedPerson: null,
       editModalVisible: false,
-      expandedRow: null,
 
       showAddModal: false,
 
@@ -341,7 +340,6 @@ export default {
       this.isLoading = true
       this.isError = false
       this.errorMessage = ''
-      this.expandedRow = null
 
 
       try {
@@ -382,7 +380,6 @@ export default {
     },
 
     openEditModal(person) {
-      this.expandedRow = null
       const copy = JSON.parse(JSON.stringify(person))
       copy.hasFaceOnDevice = person.hasFaceOnDevice
       this.editedPerson = copy
@@ -395,7 +392,6 @@ export default {
 
     async deletePerson(person) {
       if (!person.device_id) return
-      this.expandedRow = null
       try {
         await axios.delete(
           `/api/devices/${person.device_id}/persons/${person.employeeNo}/`
@@ -438,9 +434,6 @@ export default {
       }
     },
 
-    toggleActions(rowIndex) {
-      this.expandedRow = this.expandedRow === rowIndex ? null : rowIndex
-    },
 
     // (6) Следим за изменением выбора организаций/устройств с дебаунсом
     handleSelectionChange() {
@@ -598,44 +591,22 @@ export default {
 .actions-td {
   position: relative;
 }
-.actions-wrapper {
-  display: inline-block;
-  position: relative;
-}
-.dots-btn {
+
+.edit-btn, .delete-btn {
   background: none;
   border: none;
-  font-size: 1.2rem;
   cursor: pointer;
-  padding: 4px;
+  margin-right: 0.5rem; /* Если нужно отступ между иконками */
 }
 
-.dropdown-content {
-  position: absolute;
-  top: 2em;
-  right: 0;
-  background: white;
-  border: 1px solid #ccc;
-  border-radius: 5px;
-  min-width: 120px;
-  z-index: 999;
-  display: flex;
-  flex-direction: column;
-  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+.edit-btn {
+  /* какие-то стили для иконки редактирования */
 }
 
-.dropdown-content button {
-  background: none;
-  border: none;
-  padding: 8px 12px;
-  text-align: left;
-  cursor: pointer;
-  transition: background 0.2s;
+.delete-btn {
+  /* какие-то стили для иконки удаления */
 }
 
-.dropdown-content button:hover {
-  background: #f0f0f0;
-}
 
 .refresh-btn {
   display: inline-flex;
@@ -710,10 +681,7 @@ export default {
     gap: 0.5rem;
   }
 
-  .dropdown-content {
-    right: auto;
-    left: 0;
-  }
 }
+
 
 </style>
