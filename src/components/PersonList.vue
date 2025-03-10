@@ -24,8 +24,9 @@
           :closeOnSelect="false"
         />
       </div>
+    </div>
 
-      <div class="iinSearch" v-if="selectedDevices.length > 0">
+    <div class="iinSearch" v-if="selectedDevices.length > 0">
         <label for="iinSearch">Поиск по ИИН:</label>
         <input
           id="iinSearch"
@@ -33,7 +34,6 @@
           type="text"
           placeholder="Введите ИИН для поиска"
         />
-      </div>
     </div>
 
     <!-- Кнопка обновления списка персон -->
