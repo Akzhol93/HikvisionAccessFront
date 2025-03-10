@@ -3,7 +3,7 @@
     <h1 class="title">Устройства контроля доступа</h1>
 
     <button class="refresh-btn" @click="fetchDevices">
-      <i class="fas fa-sync-alt"></i> Обновить список
+      <img src="@/assets/update.png" alt="Обновить" class="icon" /> Обновить список
     </button>
 
     <!-- 1) Если идёт загрузка -->
@@ -524,7 +524,7 @@ input:checked + .slider:before {
 }
 
 .refresh-btn {
-  background: #42b983;
+  background: #28a745;
   color: white;
   border: none;
   padding: 8px 16px;
@@ -540,6 +540,11 @@ input:checked + .slider:before {
 
 .refresh-btn:hover {
   background: #369e6f;
+}
+
+.refresh-btn .icon {
+  width: 20px;
+  height: 20px;
 }
 
 

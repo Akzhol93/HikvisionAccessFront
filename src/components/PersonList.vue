@@ -214,7 +214,7 @@ export default {
 
       // (8) Пагинация (front-end)
       currentPage: 1,
-      pageSize: 10, // например, по 10 на страницу
+      pageSize: 20, // например, по 10 на страницу
 
     }
   },
@@ -545,21 +545,45 @@ export default {
 }
 
 .title {
-  color: #294358;
-  margin-top: 2rem;
-  margin-bottom: 4rem;
+  font-size: 28px; /* Крупный размер */
+  font-weight: bold;
+  color: #2c3e50; /* Темно-синий цвет */
   text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 16px 0;
+  position: relative;
+}
+.title::after {
+  content: "";
+  display: block;
+  width: 80px;
+  height: 4px;
+  background: linear-gradient(to right, #42b983, #2c3e50); /* Градиентная линия */
+  margin: 8px auto;
+  border-radius: 2px;
 }
 .iinSearch {
   margin-top: 1rem;
   margin-bottom: 1rem;
 }
+
 .add-person-btn {
   margin-top: 1rem;
   margin-bottom: 1rem;
-  padding: 0.4rem 0.8rem;
+  padding: 0.6rem 1rem;
   cursor: pointer;
+  background-color: #007BFF;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  transition: background 0.3s ease-in-out;
 }
+
+.add-person-btn:hover {
+  background-color: #0056b3;
+}
+
 .person-table {
   width: 100%;
   border-collapse: collapse;
@@ -585,35 +609,52 @@ export default {
   cursor: pointer;
   padding: 4px;
 }
+
 .dropdown-content {
   position: absolute;
   top: 2em;
   right: 0;
-  background: #fff;
+  background: white;
   border: 1px solid #ccc;
+  border-radius: 5px;
   min-width: 120px;
   z-index: 999;
   display: flex;
   flex-direction: column;
+  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
 }
+
 .dropdown-content button {
   background: none;
   border: none;
-  padding: 6px 12px;
+  padding: 8px 12px;
   text-align: left;
   cursor: pointer;
+  transition: background 0.2s;
 }
+
 .dropdown-content button:hover {
   background: #f0f0f0;
 }
+
 .refresh-btn {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
   cursor: pointer;
   float: right;
-  margin-left: 10px;
+  background: #28a745;
+  color: white;
+  padding: 0.6rem 1rem;
+  border: none;
+  border-radius: 5px;
+  transition: background 0.3s ease-in-out;
 }
+
+.refresh-btn:hover {
+  background: #218838;
+}
+
 .refresh-btn .icon {
   width: 20px;
   height: 20px;
@@ -649,4 +690,30 @@ export default {
   color: red;
   font-size: 0.85rem;
 }
+
+.org-selector, .device-selector {
+  margin-top: 1.5rem;
+}
+
+
+
+/* Медиа-запрос для мобильных устройств */
+@media (max-width: 768px) {
+  .excel-table th,
+  .excel-table td {
+    padding: 6px;
+    font-size: 14px;
+  }
+
+  .paginator {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .dropdown-content {
+    right: auto;
+    left: 0;
+  }
+}
+
 </style>
