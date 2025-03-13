@@ -3,48 +3,20 @@
     <!-- Сайдбар -->
 
     <aside class="sidebar">
-      <h2 class="sidebar-title">Разделы</h2>
+      <h2 class="sidebar-title">📁 Разделы</h2>
       <ul class="sidebar-nav">
         <li 
-          :class="{ active: activeTab === 'devices' }" 
-          @click="activeTab = 'devices'"
+          v-for="(item, index) in menuItems" 
+          :key="index" 
+          :class="{ active: activeTab === item.tab }"
+          @click="activeTab = item.tab"
         >
-          <i class="icon-devices"></i>
-          Список устройств
-        </li>
-        <li
-          :class="{ active: activeTab === 'persons' }"
-          @click="activeTab = 'persons'"
-        >
-          <i class="icon-persons"></i>
-          Список персон
-        </li>
-        <li
-          :class="{ active: activeTab === 'reportDetail' }"
-          @click="activeTab = 'reportDetail'"
-        >
-          <i class="icon-report"></i>
-          Детальный отчет
-        </li>
-
-        <li
-          :class="{ active: activeTab === 'reportBI' }"
-          @click="activeTab = 'reportBI'"
-        >
-          <i class="icon-report"></i>
-          BI отчет
-        </li>
-
-        <li
-          :class="{ active: activeTab === 'orginfo' }"
-          @click="activeTab = 'orginfo'"
-        >
-          <i class="icon-org"></i>
-          Организация / Профиль
+          <i :class="item.icon"></i>
+          {{ item.label }}
         </li>
       </ul>
       <button @click="logout" class="logout-btn">
-        Выйти
+        <i class="fas fa-sign-out-alt"></i> Выйти
       </button>
     </aside>
 
@@ -102,7 +74,14 @@ export default {
   },
   data() {
     return {
-      activeTab: 'devices'
+      activeTab: 'devices',
+      menuItems: [
+        { label: 'Список устройств', tab: 'devices', icon: 'fas fa-laptop' },
+        { label: 'Список персон', tab: 'persons', icon: 'fas fa-users' },
+        { label: 'Детальный отчет', tab: 'reportDetail', icon: 'fas fa-chart-line' },
+        { label: 'BI отчет', tab: 'reportBI', icon: 'fas fa-database' },
+        { label: 'Организация / Профиль', tab: 'orginfo', icon: 'fas fa-building' }
+      ]
     }
   }
 }
@@ -126,6 +105,7 @@ export default {
   padding: 20px;
   display: flex;
   flex-direction: column;
+  box-shadow: 4px 0 10px rgba(0, 0, 0, 0.2);
 }
 
 .sidebar-nav {
@@ -209,5 +189,62 @@ export default {
   transform: translateY(10px);
 }
 
+
+
+
+
+.sidebar-title {
+  text-align: center;
+  font-size: 1.6rem;
+  margin-bottom: 2rem;
+  font-weight: 600;
+}
+
+.sidebar-nav {
+  flex-grow: 1;
+  padding: 0;
+  list-style: none;
+}
+
+.sidebar-nav li {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  padding: 12px 10px;
+  margin-bottom: 8px;
+  border-radius: 6px;
+  transition: all 0.3s ease-in-out;
+  font-size: 1.1rem;
+}
+
+
+
+.sidebar-nav i {
+  margin-right: 12px;
+  font-size: 1.2rem;
+}
+
+.logout-btn {
+  width: 80%;
+  background: #e74c3c;
+  color: #fff;
+  border: none;
+  padding: 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1.1rem;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.logout-btn i {
+  margin-right: 8px;
+}
+
+.logout-btn:hover {
+  background: #c0392b;
+}
 
 </style>
