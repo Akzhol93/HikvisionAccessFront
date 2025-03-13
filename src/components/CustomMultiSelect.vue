@@ -260,5 +260,6 @@ export default {
   opacity: 0.8;
   cursor: not-allowed;
   pointer-events: none;
+  margin-bottom: 4px; /* Добавляем отступ снизу для визуального разделения */
 }
 </style>

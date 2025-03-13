@@ -2,11 +2,13 @@
   <div class="device-list">
     <h1 class="title">Устройства контроля доступа</h1>
 
-    <button class="refresh-btn" 
-            :class="{ 'refreshing': isRefreshing }"
-            @click="onRefreshClick">
-      <img src="@/assets/update.png" alt="Обновить" class="icon" /> Обновить список
-    </button>
+    <div class="refresh-btn-wrapper">
+      <button class="refresh-btn" 
+              :class="{ 'refreshing': isRefreshing }"
+              @click="onRefreshClick">
+        <img src="@/assets/update.png" alt="Обновить" class="icon" /> Обновить
+      </button>
+    </div>
 
     <!-- 1) Если идёт загрузка -->
     <div v-if="loading" class="loading">Загрузка...</div>
@@ -174,12 +176,24 @@ export default {
         .then((response) => {
 
           this.devices = response.data || []
-
           // Для визуального управления dropdown'ом - добавим showSchedules=false
           this.devices.forEach((dev) => {
             dev.schedules = {}
             dev.showSchedules = false
           })
+
+          this.devices.sort((a, b) => {
+            // Получаем названия организаций
+            let nameA = this.getOrganizationName(a.organization) || '';
+            let nameB = this.getOrganizationName(b.organization) || '';
+            
+            // Убираем случайные пробелы по краям
+            nameA = nameA.trim();
+            nameB = nameB.trim();
+
+            // Используем явную локаль для корректной сортировки по-русски
+            return nameA.localeCompare(nameB, 'ru', { sensitivity: 'base' });
+          });
 
           // Загрузим данные schedule/weekPlan
           this.loadSchedulesForAllDevices()
@@ -437,9 +451,6 @@ input:checked + .slider:before {
   opacity: 0;
 }
 
-
-
-
 .device-list {
   padding: 16px;
   background-color: #f9f9f9;
@@ -447,7 +458,7 @@ input:checked + .slider:before {
 
 /* Общие стили карточки */
 .device-card {
-  background: #ffffff;
+  background: #f8f9fa;
   border-radius: 10px;
   padding: 16px;
   margin-bottom: 16px;
@@ -535,9 +546,16 @@ input:checked + .slider:before {
 .status-offline {
   color: #dc3545;
 }
+
+.refresh-btn-wrapper {
+  display: flex;
+  justify-content: center; /* Центрирует кнопку горизонтально */
+  margin-bottom: 2rem;     /* Отступ снизу, если нужно */
+}
+
 /* Кнопка "Обновить список" */
 .refresh-btn {
-  background: #28a745;
+  background: #369d75;;
   color: white;
   border: none;
   padding: 8px 16px;
@@ -549,6 +567,7 @@ input:checked + .slider:before {
   gap: 8px;
   transition: background 0.3s ease;
   margin-bottom: 2rem;
+  
 }
 .refresh-btn:hover {
   background: #369e6f;

@@ -1,77 +1,81 @@
 <template>
   <div class="report-bi">
-    <h1 class="title">Отчёт о посещении столовых</h1>
+    <h1 class="title">Детальный отчёт о посещении столовых</h1>
 
     <!-- Форма фильтров -->
-    <form @submit.prevent="fetchEvents">
-      <div>
-        <label for="orgSelect">Организация:</label>
-        <select id="orgSelect" v-model="filters.organization">
-          <option value="">Все</option>
-          <option v-for="org in organizations" :value="org.id" :key="org.id">
-            {{ org.name }}
-          </option>
-        </select>
-      </div>
+    <form @submit.prevent="fetchEvents" class="filters-form">
+      <fieldset>
+        <legend>Фильтры</legend>
 
-      <div>
-        <label for="dateFrom">Дата (с):</label>
-        <input 
-          type="datetime-local" 
-          id="dateFrom" 
-          v-model="filters.date_from" 
-        />
-      </div>
+        <div class="form-container">
+          <!-- 1-я строка -->
+          <div class="form-group">
+            <label for="orgSelect">Организация:</label>
+            <select id="orgSelect" v-model="filters.organization">
+              <option value="">Все</option>
+              <option v-for="org in organizations" :value="org.id" :key="org.id">
+                {{ org.name }}
+              </option>
+            </select>
+          </div>
 
-      <div>
-        <label for="dateTo">Дата (по):</label>
-        <input 
-          type="datetime-local" 
-          id="dateTo" 
-          v-model="filters.date_to" 
-        />
-      </div>
+          <div class="form-group">
+            <label for="dateFrom">Дата (с):</label>
+            <input
+              type="datetime-local"
+              id="dateFrom"
+              v-model.trim="filters.date_from"
+            />
+          </div>
 
-      <div>
-        <label for="device">ID устройства:</label>
-        <input 
-          type="number" 
-          id="device" 
-          v-model="filters.device" 
-          placeholder="Введите ID устройства"
-        />
-      </div>
+          <div class="form-group">
+            <label for="dateTo">Дата (по):</label>
+            <input
+              type="datetime-local"
+              id="dateTo"
+              v-model.trim="filters.date_to"
+            />
+          </div>
 
-      <!-- <div>
-        <label for="eventType">Событие:</label>
-        <input 
-          type="text" 
-          id="eventType" 
-          v-model="filters.eventType" 
-          placeholder="Например: access"
-        />
-      </div> -->
+          <!-- 2-я строка -->
+          <div class="form-group">
+            <label for="device">ID устройства:</label>
+            <input
+              type="number"
+              id="device"
+              v-model.number="filters.device"
+              placeholder="Введите ID устройства"
+            />
+          </div>
 
-      <div>
-        <label for="name">ФИО:</label>
-        <input 
-          type="text" 
-          id="name" 
-          v-model="filters.name" 
-          placeholder="Частичное совпадение"
-        />
-      </div>
+          <div class="form-group">
+            <label for="name">ФИО:</label>
+            <input
+              type="text"
+              id="name"
+              v-model.trim="filters.name"
+              placeholder="Частичное совпадение"
+            />
+          </div>
 
-      <div>
-        <label for="personID">ИИН:</label>
-        <input 
-          type="text" 
-          id="personID" 
-          v-model="filters.employeeNoString" 
-          placeholder="Частичное совпадение"
-        />
-      </div>
-      <button type="submit">Показать</button>
+          <div class="form-group">
+            <label for="personID">ИИН:</label>
+            <input
+              type="text"
+              id="personID"
+              v-model.trim="filters.employeeNoString"
+              placeholder="Частичное совпадение"
+            />
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="btn-primary">Показать</button>
+          <button type="button" @click="resetFilters" class="btn-secondary">
+            Сбросить
+          </button>
+        </div>
+      </fieldset>
     </form>
 
     <!-- Показать статус загрузки / ошибку -->
@@ -82,15 +86,12 @@
     <table v-if="events.length" class="excel-table">
       <thead>
         <tr>
-          <!-- Первая колонка - номер -->
           <th>#</th>
           <th>Организация</th>
           <th>Время</th>
           <th>Устроиство</th>
-          <!-- <th>Событие</th> -->
           <th>ФИО</th>
           <th>ИИН</th>
-          <!-- Кнопка выгрузки в Excel -->
           <th style="text-align: center;">
             <button @click="downloadAsExcel" class="excel-download-btn">
               <img src="@/assets/download2.png" alt="Excel" width="20" />
@@ -104,10 +105,8 @@
           <td>{{ event.organization_name }}</td>
           <td>{{ event.dateTime }}</td>
           <td>{{ event.device }}</td>
-          <!-- <td>{{ event.eventType }}</td> -->
           <td>{{ event.name }}</td>
           <td>{{ event.employeeNoString }}</td>
-          <!-- Пустая ячейка под последнюю "эксельную" колонку -->
           <td></td>
         </tr>
       </tbody>
@@ -120,8 +119,6 @@
 <script>
 import api from '@/api'
 import axios from 'axios'
-
-// <-- добавлено для экспорта в Excel
 import ExcelJS from 'exceljs'
 import { saveAs } from 'file-saver'
 
@@ -145,12 +142,44 @@ export default {
     }
   },
   mounted() {
+    this.setDefaultDates()
     this.loadOrganizations()
   },
   methods: {
+    setDefaultDates() {
+      const now = new Date()
+      const year = now.getFullYear()
+      const month = now.getMonth()
+
+      // создаём дату "первое число текущего месяца" на 00:00
+      const firstDayOfMonth = new Date(year, month, 1, 0, 0)
+
+      // преобразуем в формат YYYY-MM-DDTHH:mm
+      this.filters.date_from = this.formatToDateTimeLocal(firstDayOfMonth)
+      this.filters.date_to = this.formatToDateTimeLocal(now)
+    },
+
+    formatToDateTimeLocal(date) {
+      const year = date.getFullYear()
+      const month = String(date.getMonth() + 1).padStart(2, '0')
+      const day = String(date.getDate()).padStart(2, '0')
+      const hours = String(date.getHours()).padStart(2, '0')
+      const minutes = String(date.getMinutes()).padStart(2, '0')
+      return `${year}-${month}-${day}T${hours}:${minutes}`
+    },
+    resetFilters() {
+      this.filters = {
+        date_from: '',
+        date_to: '',
+        device: '',
+        name: '',
+        employeeNoString: '',
+        organization: ''
+      };
+      this.setDefaultDates();
+    },
     async loadOrganizations() {
       try {
-        // 1) Получаем информацию о текущем пользователе
         const userResponse = await axios.get('/api/user_info/');
         const user = userResponse.data;
 
@@ -162,12 +191,10 @@ export default {
         const userOrgId = user.organization.id;
         const isMain = user.organization.is_main;
 
-        // 2) Если это главная организация -> получить список дочерних
         if (isMain) {
           const orgsResponse = await axios.get(`/api/organizations/?parent_id=${userOrgId}`);
           this.organizations = orgsResponse.data || [];
         } else {
-          // 3) Иначе пользователь в дочерней -> единственная организация
           this.organizations = [user.organization];
         }
       } catch (error) {
@@ -202,18 +229,13 @@ export default {
         })
     },
     toISO(datetimeLocal) {
-      // datetimeLocal в формате "2025-01-01T14:00"
-      // Вернём без изменений (или адаптируйте под ваш формат, если нужно)
       return datetimeLocal
     },
-
-    // Метод для выгрузки в Excel
     async downloadAsExcel() {
       try {
         const workbook = new ExcelJS.Workbook()
         const worksheet = workbook.addWorksheet('Events')
 
-        // Заголовок
         worksheet.addRow([
           '#',
           'Organization',
@@ -224,7 +246,6 @@ export default {
           'employeeNoString'
         ])
 
-        // Данные
         this.events.forEach((ev, index) => {
           worksheet.addRow([
             index + 1,
@@ -237,7 +258,6 @@ export default {
           ])
         })
 
-        // Сохраняем
         const buffer = await workbook.xlsx.writeBuffer()
         saveAs(new Blob([buffer]), 'events.xlsx')
       } catch (error) {
@@ -248,11 +268,12 @@ export default {
 }
 </script>
 
+
 <style scoped>
 .title {
-  font-size: 28px; /* Крупный размер */
+  font-size: 28px;
   font-weight: bold;
-  color: #2c3e50; /* Темно-синий цвет */
+  color: #2c3e50;
   text-align: center;
   text-transform: uppercase;
   letter-spacing: 1px;
@@ -265,15 +286,9 @@ export default {
   display: block;
   width: 80px;
   height: 4px;
-  background: linear-gradient(to right, #42b983, #2c3e50); /* Градиентная линия */
+  background: linear-gradient(to right, #42b983, #2c3e50);
   margin: 8px auto;
   border-radius: 2px;
-}
-
-@media (max-width: 768px) {
-  .title {
-    font-size: 22px; /* Меньше на мобильных */
-  }
 }
 
 /* Кнопка Excel */
@@ -284,7 +299,7 @@ export default {
   padding: 4px;
 }
 
-/* Стили таблицы "как в PersonList.vue" */
+/* Таблица */
 .excel-table {
   border-collapse: collapse;
   width: 100%;
@@ -310,20 +325,108 @@ export default {
   background-color: #e8f0fe;
 }
 
-/* Стили формы */
+/* Форма */
 .report-bi form {
   margin-top: 4rem;
   margin-bottom: 4rem;
-  display: flex;
-  flex-wrap: wrap; 
-  gap: 10px;
+  /* убираем лишний flex-стиль, заменяем на display: block
+     поскольку выравнивать будем через max-width */
+  display: block; 
+  width: 100%;
 }
-.report-bi form div {
-  display: flex;
-  flex-direction: column;
+
+.filters-form {
+  background: #f8f9fa;
+  padding: 20px;
+  border-radius: 8px;
+  margin: 0 auto;
+  /* КЛЮЧ: ограничиваем макс. ширину и центрируем */
+  max-width: 1000px; /* подберите нужное значение */
+  box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+fieldset {
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+
+legend {
+  font-size: 18px;
+  font-weight: bold;
+  margin-bottom: 15px;
+  color: #2c3e50;
 }
 
 .error {
   color: red;
+}
+
+/* 
+  Сетка для 2 строк по 3 поля на широком экране:
+  По умолчанию (меньше 1000px) — одна колонка, 
+  при ширине > 1000px — 3 колонки
+*/
+.form-container {
+  display: grid;
+  grid-template-columns: 1fr; 
+  gap: 15px;
+}
+
+@media (min-width: 1000px) {
+  .form-container {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+label {
+  font-size: 14px;
+  font-weight: bold;
+  margin-bottom: 5px;
+  color: #333;
+}
+
+input, select {
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 20px;
+}
+
+.btn-primary {
+  background: #42b983;
+  color: white;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.btn-secondary {
+  background: #ccc;
+  color: black;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.btn-primary:hover {
+  background: #369d75;
+}
+
+.btn-secondary:hover {
+  background: #bbb;
 }
 </style>

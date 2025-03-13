@@ -1,68 +1,78 @@
 <template>
   <div class="report-bi">
-    <h1 class="title">Отчёт о посещении столовых</h1>
+    <h1 class="title">BI отчёт о посещении столовых</h1>
 
     <!-- Форма фильтров -->
-    <form @submit.prevent="fetchEvents">
-      <div>
-        <label for="orgSelect">Организация:</label>
-        <select id="orgSelect" v-model="filters.organization">
-          <option value="">Все</option>
-          <option v-for="org in organizations" :value="org.id" :key="org.id">
-            {{ org.name }}
-          </option>
-        </select>
-      </div>
+    <form @submit.prevent="fetchEvents" class="filters-form">
+      <fieldset>
+        <legend>Фильтры</legend>
+        <div class="form-container">
 
-      <div>
-        <label for="dateFrom">Дата (с):</label>
-        <input 
-          type="datetime-local" 
-          id="dateFrom" 
-          v-model="filters.date_from" 
-        />
-      </div>
+          <div class="form-group">
+            <label for="orgSelect">Организация:</label>
+            <select id="orgSelect" v-model="filters.organization">
+              <option value="">Все</option>
+              <option v-for="org in organizations" :value="org.id" :key="org.id">
+                {{ org.name }}
+              </option>
+            </select>
+          </div>
 
-      <div>
-        <label for="dateTo">Дата (по):</label>
-        <input 
-          type="datetime-local" 
-          id="dateTo" 
-          v-model="filters.date_to" 
-        />
-      </div>
+          <div class="form-group">
+            <label for="dateFrom">Дата (с):</label>
+            <input 
+              type="datetime-local" 
+              id="dateFrom" 
+              v-model="filters.date_from" 
+            />
+          </div>
 
-      <div>
-        <label for="device">ID устройства:</label>
-        <input 
-          type="number" 
-          id="device" 
-          v-model="filters.device" 
-          placeholder="Введите ID устройства"
-        />
-      </div>
+          <div class="form-group">
+            <label for="dateTo">Дата (по):</label>
+            <input 
+              type="datetime-local" 
+              id="dateTo" 
+              v-model="filters.date_to" 
+            />
+          </div>
 
-      <div>
-        <label for="name">ФИО:</label>
-        <input 
-          type="text" 
-          id="name" 
-          v-model="filters.name" 
-          placeholder="Частичное совпадение"
-        />
-      </div>
+          <div class="form-group">
+            <label for="device">ID устройства:</label>
+            <input 
+              type="number" 
+              id="device" 
+              v-model="filters.device" 
+              placeholder="Введите ID устройства"
+            />
+          </div>
 
-      <div>
-        <label for="personID">ИИН:</label>
-        <input 
-          type="text" 
-          id="personID" 
-          v-model="filters.employeeNoString" 
-          placeholder="Частичное совпадение"
-        />
-      </div>
+          <div class="form-group">
+            <label for="name">ФИО:</label>
+            <input 
+              type="text" 
+              id="name" 
+              v-model="filters.name" 
+              placeholder="Частичное совпадение"
+            />
+          </div>
 
-      <button type="submit">Показать</button>
+          <div class="form-group">
+            <label for="personID">ИИН:</label>
+            <input 
+              type="text" 
+              id="personID" 
+              v-model="filters.employeeNoString" 
+              placeholder="Частичное совпадение"
+            />
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn-primary">Показать</button>
+          <button type="button" @click="resetFilters" class="btn-secondary">
+            Сбросить
+          </button>
+        </div>
+      </fieldset>
     </form>
 
     <!-- Блок с чекбоксами для выбора полей группировки -->
@@ -119,36 +129,37 @@
 
     <p v-else-if="!loading && !error">Нет данных для отображения.</p>
 
-    <h1 class="title" v-if="!loading && !error && events.length">
-      BI Аналитика
-    </h1>
-
-    <!-- Блок с диаграммой (Line/Pie) -->
+    <!-- Улучшенный блок с диаграммами -->
     <div class="chart-section" v-if="events.length">
-      <!-- 1) Линейная диаграмма -->
-      <div class="line-chart-block">
-   
-        <apexchart
-          type="line"
-          height="350"
-          width="100%"
-          :options="chartOptionsLine"
-          :series="chartSeriesLine"
-        ></apexchart>
-      </div>
+      <h2 class="chart-title">Графическая аналитика посещаемости</h2>
 
-      <!-- 2) Круговая диаграмма -->
-      <div class="pie-chart-block">
+      <div class="charts-container">
+        <!-- Линейная диаграмма -->
+        <div class="chart-card">
+          <h3 class="chart-subtitle">Динамика посещений</h3>
+          <apexchart
+            type="line"
+            height="350"
+            width="100%"
+            :options="chartOptionsLine"
+            :series="chartSeriesLine"
+          ></apexchart>
+        </div>
 
-        <apexchart
-          type="pie"
-          height="350"
-          width="100%"
-          :options="chartOptionsPie"
-          :series="chartSeriesPie"
-        ></apexchart>
+        <!-- Круговая диаграмма -->
+        <div class="chart-card">
+          <h3 class="chart-subtitle">Распределение посещений</h3>
+          <apexchart
+            type="pie"
+            height="350"
+            width="100%"
+            :options="chartOptionsPie"
+            :series="chartSeriesPie"
+          ></apexchart>
+        </div>
       </div>
     </div>
+
   </div>
 </template>
 
@@ -229,6 +240,7 @@ export default {
     }
   },
   mounted() {
+    this.setDefaultDates()
     this.loadOrganizations()
   },
   computed: {
@@ -266,6 +278,38 @@ export default {
     }
   },
   methods: {
+    setDefaultDates() {
+      const now = new Date()
+      const year = now.getFullYear()
+      const month = now.getMonth()
+
+      // создаём дату "первое число текущего месяца" на 00:00
+      const firstDayOfMonth = new Date(year, month, 1, 0, 0)
+
+      // преобразуем в формат YYYY-MM-DDTHH:mm
+      this.filters.date_from = this.formatToDateTimeLocal(firstDayOfMonth)
+      this.filters.date_to = this.formatToDateTimeLocal(now)
+    },
+
+    formatToDateTimeLocal(date) {
+      const year = date.getFullYear()
+      const month = String(date.getMonth() + 1).padStart(2, '0')
+      const day = String(date.getDate()).padStart(2, '0')
+      const hours = String(date.getHours()).padStart(2, '0')
+      const minutes = String(date.getMinutes()).padStart(2, '0')
+      return `${year}-${month}-${day}T${hours}:${minutes}`
+    },
+    resetFilters() {
+      this.filters = {
+        date_from: '',
+        date_to: '',
+        device: '',
+        name: '',
+        employeeNoString: '',
+        organization: ''
+      };
+      this.setDefaultDates();
+    },
     async loadOrganizations() {
       try {
         const userResponse = await axios.get('/api/user_info/');
@@ -490,18 +534,6 @@ export default {
   }
 }
 
-.report-bi form {
-  margin-top: 4rem;
-  margin-bottom: 2rem;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.report-bi form div {
-  display: flex;
-  flex-direction: column;
-}
 
 .grouping-options {
   margin-top: 5rem;
@@ -534,12 +566,16 @@ export default {
   background-color: #e8f0fe;
 }
 
+
 .chart-section {
-  margin-top: 20px;
-  width: 100%;
-  max-width: none;
-  margin: 5rem auto;
+  background: #ffffff;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  margin: 50px auto;
+  max-width: 1200px;
 }
+
 .line-chart-block {
   margin-bottom: 5rem; 
 }
@@ -559,4 +595,153 @@ export default {
 .excel-download-btn:hover {
   background: #f0f0f0;
 }
+
+
+/* Форма */
+.report-bi form {
+  margin-top: 4rem;
+  margin-bottom: 4rem;
+  /* убираем лишний flex-стиль, заменяем на display: block
+     поскольку выравнивать будем через max-width */
+  display: block; 
+  width: 100%;
+}
+
+.filters-form {
+  background: #f8f9fa;
+  padding: 20px;
+  border-radius: 8px;
+  margin: 0 auto;
+  /* КЛЮЧ: ограничиваем макс. ширину и центрируем */
+  max-width: 1000px; /* подберите нужное значение */
+  box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+fieldset {
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+
+legend {
+  font-size: 18px;
+  font-weight: bold;
+  margin-bottom: 15px;
+  color: #2c3e50;
+}
+
+.error {
+  color: red;
+}
+
+/* 
+  Сетка для 2 строк по 3 поля на широком экране:
+  По умолчанию (меньше 1000px) — одна колонка, 
+  при ширине > 1000px — 3 колонки
+*/
+.form-container {
+  display: grid;
+  grid-template-columns: 1fr; 
+  gap: 15px;
+}
+
+@media (min-width: 1000px) {
+  .form-container {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+label {
+  font-size: 14px;
+  font-weight: bold;
+  margin-bottom: 5px;
+  color: #333;
+}
+
+input, select {
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 20px;
+}
+
+.btn-primary {
+  background: #42b983;
+  color: white;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.btn-secondary {
+  background: #ccc;
+  color: black;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.btn-primary:hover {
+  background: #369d75;
+}
+
+.btn-secondary:hover {
+  background: #bbb;
+}
+
+
+
+
+
+
+
+.chart-title {
+  font-size: 22px;
+  font-weight: bold;
+  text-align: center;
+  color: #2c3e50;
+  margin-bottom: 20px;
+}
+
+.charts-container {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+}
+
+/* Для широких экранов делаем 2 диаграммы в ряд */
+@media (min-width: 900px) {
+  .charts-container {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.chart-card {
+  background: #f8f9fa;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+  text-align: center;
+}
+
+.chart-subtitle {
+  font-size: 18px;
+  font-weight: bold;
+  color: #2c3e50;
+  margin-bottom: 10px;
+}
+
 </style>

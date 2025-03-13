@@ -548,6 +548,11 @@ export default {
   border-radius: 2px;
 }
 
+@media (max-width: 768px) {
+  .title {
+    font-size: 22px; /* Меньше на мобильных */
+  }
+}
 
 .add-person-btn {
   margin-top: 4rem;
@@ -681,7 +686,7 @@ export default {
 
 
 .filter {
-  background: #f8f9fa; /* Светлый фон */
+  background: #f8f9fa;
   border-radius: 8px;
   padding: 16px;
   display: flex;

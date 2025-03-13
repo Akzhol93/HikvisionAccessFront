@@ -43,10 +43,11 @@
           Организация / Профиль
         </li>
       </ul>
+      <button @click="logout" class="logout-btn">
+        Выйти
+      </button>
     </aside>
-    <button @click="logout" class="logout-btn">
-      Выйти
-    </button>
+
 
     <!-- Основная область контента -->
     <main class="content-area">
@@ -114,27 +115,31 @@ export default {
   min-height: 100vh; 
 }
 
-
 .sidebar {
-  position: fixed;   /* Закрепляем */
-  top: 0;            /* Прижимаем к верхнему краю экрана */
-  bottom: 0;         /* Прижимаем к нижнему краю экрана (чтобы тянулось на всю высоту) */
-  left: 0;    
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
   width: 240px;
   background-color: #294358;
   color: #fff;
   padding: 20px;
+  display: flex;
+  flex-direction: column;
 }
+
+.sidebar-nav {
+  flex-grow: 1; /* Чтобы навигация занимала доступное пространство */
+  list-style: none;
+  padding: 0;
+}
+
 .sidebar-title {
   text-align: center;
   font-size: 1.5rem;
   margin-bottom: 3rem;
 }
 
-.sidebar-nav {
-  list-style: none;
-  padding: 0;
-}
 
 .sidebar-nav li {
   cursor: pointer;
@@ -176,15 +181,21 @@ export default {
 
 .logout-btn {
   position: absolute;
-  top: 16px;
-  right: 16px;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80%; /* Чтобы кнопка не была слишком узкой */
   background: #e74c3c;
   color: #fff;
   border: none;
-  padding: 8px 12px;
+  padding: 10px 12px;
   border-radius: 4px;
   cursor: pointer;
+  text-align: center;
 }
+
+
+
 .logout-btn:hover {
   background: #c0392b;
 }
@@ -197,4 +208,6 @@ export default {
   opacity: 0;
   transform: translateY(10px);
 }
+
+
 </style>
