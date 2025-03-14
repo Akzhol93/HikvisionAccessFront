@@ -8,36 +8,42 @@
         <legend>Фильтры</legend>
 
         <div class="form-container">
-          <!-- 1-я строка -->
+          <!-- Организация -->
           <div class="form-group">
             <label for="orgSelect">Организация:</label>
             <select id="orgSelect" v-model="filters.organization">
               <option value="">Все</option>
-              <option v-for="org in organizations" :value="org.id" :key="org.id">
+              <option
+                v-for="org in organizations"
+                :value="org.id"
+                :key="org.id"
+              >
                 {{ org.name }}
               </option>
             </select>
           </div>
 
+          <!-- Дата с -->
           <div class="form-group">
             <label for="dateFrom">Дата (с):</label>
             <input
               type="datetime-local"
               id="dateFrom"
-              v-model.trim="filters.date_from"
+              v-model="filters.date_from"
             />
           </div>
 
+          <!-- Дата по -->
           <div class="form-group">
             <label for="dateTo">Дата (по):</label>
             <input
               type="datetime-local"
               id="dateTo"
-              v-model.trim="filters.date_to"
+              v-model="filters.date_to"
             />
           </div>
 
-          <!-- 2-я строка -->
+          <!-- Устройство -->
           <div class="form-group">
             <label for="device">ID устройства:</label>
             <input
@@ -48,6 +54,7 @@
             />
           </div>
 
+          <!-- ФИО -->
           <div class="form-group">
             <label for="name">ФИО:</label>
             <input
@@ -58,6 +65,7 @@
             />
           </div>
 
+          <!-- ИИН -->
           <div class="form-group">
             <label for="personID">ИИН:</label>
             <input
@@ -78,18 +86,18 @@
       </fieldset>
     </form>
 
-    <!-- Показать статус загрузки / ошибку -->
+    <!-- Статусы загрузки / ошибки -->
     <div v-if="loading">Загрузка...</div>
     <div v-if="error" class="error">Ошибка: {{ error }}</div>
 
-    <!-- Таблица с результатами -->
+    <!-- Таблица результатов -->
     <table v-if="events.length" class="excel-table">
       <thead>
         <tr>
           <th>#</th>
           <th>Организация</th>
           <th>Время</th>
-          <th>Устроиство</th>
+          <th>Устройство</th>
           <th>ФИО</th>
           <th>ИИН</th>
           <th style="text-align: center;">
@@ -112,25 +120,26 @@
       </tbody>
     </table>
 
+    <!-- Если данных нет -->
     <p v-else-if="!loading && !error">Нет данных для отображения.</p>
   </div>
 </template>
 
 <script>
-import api from '@/api'
 import axios from 'axios'
+import api from '@/api' // Если это ваш уже настроенный axios-инстанс
 import ExcelJS from 'exceljs'
 import { saveAs } from 'file-saver'
 
 export default {
   name: 'ReportDetail',
+
   data() {
     return {
       filters: {
         date_from: '',
         date_to: '',
         device: '',
-        eventType: '',
         name: '',
         employeeNoString: '',
         organization: ''
@@ -141,24 +150,26 @@ export default {
       error: null
     }
   },
+
   mounted() {
     this.setDefaultDates()
     this.loadOrganizations()
   },
+
   methods: {
+    // Устанавливаем даты по умолчанию: с начала месяца по текущее время
     setDefaultDates() {
       const now = new Date()
       const year = now.getFullYear()
       const month = now.getMonth()
-
-      // создаём дату "первое число текущего месяца" на 00:00
+      // Первое число текущего месяца
       const firstDayOfMonth = new Date(year, month, 1, 0, 0)
-
-      // преобразуем в формат YYYY-MM-DDTHH:mm
+      // Форматируем под datetime-local
       this.filters.date_from = this.formatToDateTimeLocal(firstDayOfMonth)
       this.filters.date_to = this.formatToDateTimeLocal(now)
     },
 
+    // Форматирует Date -> YYYY-MM-DDTHH:mm
     formatToDateTimeLocal(date) {
       const year = date.getFullYear()
       const month = String(date.getMonth() + 1).padStart(2, '0')
@@ -167,6 +178,8 @@ export default {
       const minutes = String(date.getMinutes()).padStart(2, '0')
       return `${year}-${month}-${day}T${hours}:${minutes}`
     },
+
+    // Сброс фильтров к изначальному состоянию
     resetFilters() {
       this.filters = {
         date_from: '',
@@ -175,89 +188,95 @@ export default {
         name: '',
         employeeNoString: '',
         organization: ''
-      };
-      this.setDefaultDates();
+      }
+      this.setDefaultDates()
     },
+
+    // Загружаем организации в зависимости от прав пользователя
     async loadOrganizations() {
       try {
-        const userResponse = await axios.get('/api/user_info/');
-        const user = userResponse.data;
-
-        if (!user.organization) {
-          console.warn('У пользователя не указана организация');
-          this.organizations = [];
-          return;
+        const { data: user } = await axios.get('/api/user_info/')
+        if (!user?.organization) {
+          console.warn('У пользователя не указана организация')
+          this.organizations = []
+          return
         }
-        const userOrgId = user.organization.id;
-        const isMain = user.organization.is_main;
+        const userOrgId = user.organization.id
+        const isMain = user.organization.is_main
 
         if (isMain) {
-          const orgsResponse = await axios.get(`/api/organizations/?parent_id=${userOrgId}`);
-          this.organizations = orgsResponse.data || [];
+          const { data: orgs } = await axios.get(
+            `/api/organizations/?parent_id=${userOrgId}`
+          )
+          this.organizations = orgs || []
         } else {
-          this.organizations = [user.organization];
+          this.organizations = [user.organization]
         }
       } catch (error) {
-        console.error('Ошибка при загрузке организаций:', error);
-        this.organizations = [];
+        console.error('Ошибка при загрузке организаций:', error)
+        this.organizations = []
       }
     },
-    fetchEvents() {
-      this.loading = true;
-      this.error = null;
-      this.events = [];
 
-      const params = {}
-      if (this.filters.date_from) params.date_from = this.toISO(this.filters.date_from)
-      if (this.filters.date_to) params.date_to = this.toISO(this.filters.date_to)
-      if (this.filters.device) params.device = this.filters.device
-      if (this.filters.eventType) params.eventType = this.filters.eventType
-      if (this.filters.name) params.name = this.filters.name
-      if (this.filters.employeeNoString) params.employeeNoString = this.filters.employeeNoString
-      if (this.filters.organization) params.organization = this.filters.organization
+    // Получение событий с сервера
+    async fetchEvents() {
+      this.loading = true
+      this.error = null
+      this.events = []
 
-      api
-        .get('/api/access-events/', { params })
-        .then(response => {
-          this.events = response.data
-        })
-        .catch(err => {
-          this.error = err.response?.data?.detail || err.message
-        })
-        .finally(() => {
-          this.loading = false
-        })
+      try {
+        const params = {
+          // Если значение не пустое, отправляем в запрос
+          ...(this.filters.date_from && { date_from: this.filters.date_from }),
+          ...(this.filters.date_to && { date_to: this.filters.date_to }),
+          ...(this.filters.device && { device: this.filters.device }),
+          ...(this.filters.name && { name: this.filters.name }),
+          ...(this.filters.employeeNoString && {
+            employeeNoString: this.filters.employeeNoString
+          }),
+          ...(this.filters.organization && {
+            organization: this.filters.organization
+          })
+        }
+
+        const { data } = await api.get('/api/access-events/', { params })
+        this.events = data
+      } catch (err) {
+        this.error = err.response?.data?.detail || err.message
+      } finally {
+        this.loading = false
+      }
     },
-    toISO(datetimeLocal) {
-      return datetimeLocal
-    },
+
+    // Экспорт данных в Excel
     async downloadAsExcel() {
       try {
         const workbook = new ExcelJS.Workbook()
         const worksheet = workbook.addWorksheet('Events')
 
+        // Заголовки
         worksheet.addRow([
           '#',
-          'Organization',
-          'dateTime',
-          'device',
-          'eventType',
-          'name',
-          'employeeNoString'
+          'Организация',
+          'Время',
+          'Устройство',
+          'ФИО',
+          'ИИН'
         ])
 
+        // Данные
         this.events.forEach((ev, index) => {
           worksheet.addRow([
             index + 1,
             ev.organization_name,
             ev.dateTime,
             ev.device,
-            ev.eventType,
             ev.name,
             ev.employeeNoString
           ])
         })
 
+        // Генерируем файл и сохраняем
         const buffer = await workbook.xlsx.writeBuffer()
         saveAs(new Blob([buffer]), 'events.xlsx')
       } catch (error) {
@@ -267,7 +286,6 @@ export default {
   }
 }
 </script>
-
 
 <style scoped>
 .title {
@@ -329,9 +347,7 @@ export default {
 .report-bi form {
   margin-top: 4rem;
   margin-bottom: 4rem;
-  /* убираем лишний flex-стиль, заменяем на display: block
-     поскольку выравнивать будем через max-width */
-  display: block; 
+  display: block;
   width: 100%;
 }
 
@@ -340,8 +356,7 @@ export default {
   padding: 20px;
   border-radius: 8px;
   margin: 0 auto;
-  /* КЛЮЧ: ограничиваем макс. ширину и центрируем */
-  max-width: 1000px; /* подберите нужное значение */
+  max-width: 1000px;
   box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
 }
 
@@ -362,14 +377,10 @@ legend {
   color: red;
 }
 
-/* 
-  Сетка для 2 строк по 3 поля на широком экране:
-  По умолчанию (меньше 1000px) — одна колонка, 
-  при ширине > 1000px — 3 колонки
-*/
+/* Сетка для полей (2 строки по 3 поля) */
 .form-container {
   display: grid;
-  grid-template-columns: 1fr; 
+  grid-template-columns: 1fr;
   gap: 15px;
 }
 
@@ -391,7 +402,8 @@ label {
   color: #333;
 }
 
-input, select {
+input,
+select {
   padding: 8px;
   border: 1px solid #ccc;
   border-radius: 4px;

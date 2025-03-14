@@ -2,6 +2,7 @@
   <div>
     <h1 class="title">Список персон</h1>
 
+    <!-- Фильтры -->
     <div class="filter">
       <div class="org-selector filter-item">
         <label>1. Выберите организацию:</label>
@@ -10,17 +11,19 @@
           :options="organizations"
           label-prop="name"
           option-key-prop="id"
+          @change="handleSelectionChange"
         />
       </div>
 
       <div class="device-selector filter-item">
-        <label>2. Выберите устроиства:</label>
+        <label>2. Выберите устройства:</label>
         <CustomMultiSelect
           v-model="selectedDevices"
           :options="filteredDevices"
           label-prop="name"
           option-key-prop="id"
           :disabled="selectedOrganizations.length === 0"
+          @change="handleSelectionChange"
         />
       </div>
 
@@ -36,27 +39,22 @@
       </div>
     </div>
 
-
-
-
     <!-- Кнопка обновления списка персон -->
     <button
-    v-if="selectedDevices.length > 0"
-    @click="fetchPersons"
-    class="refresh-btn"
+      v-if="selectedDevices.length > 0"
+      @click="fetchPersons"
+      class="refresh-btn"
     >
       <img src="@/assets/update.png" alt="Обновить" class="icon" />
       Обновить таблицу
     </button>
 
-
-
-    <!-- (Кнопка Добавить) -->
+    <!-- Кнопка Добавить -->
     <button @click="showAddModal = true" class="add-person-btn">
       + Добавить
     </button>
 
-    <!-- (4) Состояния загрузки/ошибки/нет данных/таблица -->
+    <!-- Состояния: загрузка / ошибка / нет данных / таблица -->
     <div v-if="isLoading">
       <p>Загрузка...</p>
     </div>
@@ -67,7 +65,7 @@
       <p>Нет персон (или не выбрано устройство).</p>
     </div>
     <div v-else>
-      <!-- (2) Таблица с персонами -->
+      <!-- Таблица -->
       <table class="excel-table">
         <thead>
           <tr>
@@ -87,7 +85,6 @@
           </tr>
         </thead>
         <tbody>
-          <!-- Используем paginatedPersons вместо filteredPersons -->
           <tr v-for="(person, index) in paginatedPersons" :key="index">
             <td>{{ indexOnPage(index) }}</td>
             <td>{{ getOrganizationName(person.organization_id) }}</td>
@@ -102,8 +99,6 @@
               />
               <button v-else @click="loadPhoto(person)">Показать фото</button>
             </td>
-
-            <!-- Основные поля персоны -->
             <td>{{ person.employeeNo }}</td>
             <td>{{ person.name }}</td>
             <td>{{ person.userType }}</td>
@@ -113,15 +108,10 @@
               </span>
               <span v-else>Нет планов</span>
             </td>
-
-   
             <td class="actions-td">
-              <!-- Кнопка "Редактировать" -->
               <button class="edit-btn" @click="openEditModal(person)">
                 <img src="@/assets/edit.png" alt="Edit" width="20" />
               </button>
-
-              <!-- Кнопка "Удалить" -->
               <button class="delete-btn" @click="deletePerson(person)">
                 <img src="@/assets/delete.png" alt="Delete" width="20" />
               </button>
@@ -130,14 +120,13 @@
         </tbody>
       </table>
 
-      <!-- Пагинатор -->
+      <!-- Пагинация -->
       <div class="paginator">
-        <button @click="prevPage" :disabled="currentPage === 1">Предыдущая</button>
+        <button @click="prevPage" :disabled="currentPage === 1">
+          Предыдущая
+        </button>
         <span>Страница {{ currentPage }} из {{ totalPages }}</span>
-        <button
-          @click="nextPage"
-          :disabled="currentPage === totalPages"
-        >
+        <button @click="nextPage" :disabled="currentPage === totalPages">
           Следующая
         </button>
 
@@ -151,14 +140,14 @@
       </div>
     </div>
 
-    <!-- (3) Модальное окно для добавления НОВОЙ персоны -->
+    <!-- Модальное окно: Добавление -->
     <AddPersonModal
       v-if="showAddModal"
       @close="showAddModal = false"
       @personCreated="handlePersonCreated"
     />
 
-    <!-- (4) Модальное окно / форма для редактирования персоны -->
+    <!-- Модальное окно: Редактирование -->
     <PersonEditModal
       v-if="editModalVisible"
       :device-id="editedPerson?.device_id"
@@ -174,167 +163,147 @@ import axios from 'axios'
 import PersonEditModal from './PersonEditModal.vue'
 import AddPersonModal from './AddPersonModal.vue'
 import 'vue-select/dist/vue-select.css'
-
 import ExcelJS from 'exceljs'
 import { saveAs } from 'file-saver'
 import CustomMultiSelect from '@/components/CustomMultiSelect.vue'
 
-
 export default {
   name: 'PersonList',
-  components: { PersonEditModal, AddPersonModal, CustomMultiSelect},
+  components: {
+    PersonEditModal,
+    AddPersonModal,
+    CustomMultiSelect
+  },
   data() {
     return {
-      devices: [],
-      selectedDevices: [],
-      persons: [],
-      editedPerson: null,
-      editModalVisible: false,
-
-      showAddModal: false,
-
+      /* Основные данные */
       organizations: [],
+      devices: [],
+      persons: [],
+
+      /* Выбранные значения */
       selectedOrganizations: [],
+      selectedDevices: [],
+
+      /* Поиск по ИИН */
       searchIin: '',
 
-      // (4) Доп. состояния
+      /* Состояния */
       isLoading: false,
       isError: false,
       errorMessage: '',
 
-      // (6) Для дебаунса
-      selectionChangeTimeout: null,
+      /* Модальные окна */
+      showAddModal: false,
+      editedPerson: null,
+      editModalVisible: false,
 
-      // (8) Пагинация (front-end)
+      /* Пагинация */
       currentPage: 1,
-      pageSize: 50, // например, по 10 на страницу
-
+      pageSize: 50
     }
   },
   computed: {
-    // Фильтрация устройств по выбранным организациям
+    /* Фильтр устройств по выбранным организациям */
     filteredDevices() {
-      if (!this.selectedOrganizations.length) {
-        return []
-      }
+      if (!this.selectedOrganizations.length) return []
       const selectedOrgIds = this.selectedOrganizations.map(org => org.id)
       return this.devices.filter(device =>
         selectedOrgIds.includes(device.organization)
       )
     },
-    // Фильтр персон по searchIin
+    /* Фильтр персон по поиску (ИИН) */
     filteredPersons() {
-      if (!this.searchIin) {
-        return this.persons
-      }
+      if (!this.searchIin) return this.persons
       const searchValue = this.searchIin.toLowerCase()
-      return this.persons.filter((p) => {
+      return this.persons.filter(p => {
         if (!p.employeeNo) return false
         return p.employeeNo.toLowerCase().includes(searchValue)
       })
     },
-    // (8) Получаем только нужный кусок (для текущей страницы)
+    /* Пагинированный список */
     paginatedPersons() {
       const start = (this.currentPage - 1) * this.pageSize
       const end = start + this.pageSize
       return this.filteredPersons.slice(start, end)
     },
-    // Для удобства — всего страниц
     totalPages() {
       return Math.ceil(this.filteredPersons.length / this.pageSize) || 1
     }
   },
   mounted() {
-    this.fetchDevices()
-    this.fetchOrganizations()
+    this.loadInitialData()
   },
   methods: {
-    // Утилита, чтобы нумерация в таблице не сбивалась при пагинации
-    indexOnPage(localIndex) {
-      return (this.currentPage - 1) * this.pageSize + (localIndex + 1)
-    },
-
-    // Пагинация (front-end)
-    prevPage() {
-      if (this.currentPage > 1) {
-        this.currentPage--
-      }
-    },
-    nextPage() {
-      if (this.currentPage < this.totalPages) {
-        this.currentPage++
-      }
-    },
-
-    getOrganizationName(orgId) {
-      const org = this.organizations.find(o => o.id === orgId)
-      return org ? org.name : 'N/A'
-    },
-
-    // (4) Добавим загрузку/ошибку
-    async fetchDevices() {
+    /* Загрузка орг и устройств параллельно */
+    async loadInitialData() {
       this.isLoading = true
       this.isError = false
       this.errorMessage = ''
       try {
-        const response = await axios.get('/api/devices/')
-        this.devices = response.data
-        // По желанию, сразу подгружаем персоны
-        this.fetchPersons()
-      } catch (error) {
-        this.isError = true
-        this.errorMessage = 'Ошибка при загрузке устройств: ' + error
-      } finally {
-        this.isLoading = false
-      }
-    },
+        const [userResp, devicesResp] = await Promise.all([
+          axios.get('/api/user_info/'),
+          axios.get('/api/devices/')
+        ])
+        const user = userResp.data
+        this.devices = devicesResp.data
 
-    // (4) Аналогично
-    async fetchOrganizations() {
-      this.isLoading = true
-      this.isError = false
-      this.errorMessage = ''
-      try {
-        const userResponse = await axios.get('/api/user_info/')
-        const user = userResponse.data
+        // Определяем организации
         if (!user.organization) {
           console.warn('У пользователя не указана организация')
           this.organizations = []
           this.selectedOrganizations = []
-          return
-        }
-        const userOrgId = user.organization.id
-        const isMain = user.organization.is_main
-
-        if (isMain) {
-          const orgsResponse = await axios.get(`/api/organizations/?parent_id=${userOrgId}`);
-          this.organizations = orgsResponse.data || [];
-          // По умолчанию выбираем все
-          this.selectedOrganizations = [];
         } else {
-          // 3) Иначе пользователь в дочерней -> единственная организация
-          this.organizations = [user.organization];
-          // По умолчанию сразу выбираем её же
-          this.selectedOrganizations = [user.organization];
-        }
+          const userOrgId = user.organization.id
+          const isMain = user.organization.is_main
 
+          if (isMain) {
+            // Если главная — подгружаем все дочерние
+            const orgsResponse = await axios.get(`/api/organizations/?parent_id=${userOrgId}`)
+            this.organizations = orgsResponse.data || []
+            // Выбор организаций по умолчанию (можно оставить пустой, если нужно выбор вручную)
+            this.selectedOrganizations = []
+          } else {
+            // Иначе — организация только одна
+            this.organizations = [user.organization]
+            this.selectedOrganizations = [user.organization]
+          }
+        }
       } catch (error) {
         this.isError = true
-        this.errorMessage = 'Ошибка при загрузке организаций: ' + error
+        this.errorMessage = 'Ошибка при загрузке начальных данных: ' + error
       } finally {
         this.isLoading = false
       }
     },
+
+    /* Общий метод — при смене организации/устройств (debounce можно добавить при необходимости) */
+    handleSelectionChange() {
+      // Сбрасываем страницу
+      this.currentPage = 1
+      // Синхронизируем выбранные устройства с отфильтрованными
+      const allowedDeviceIds = this.filteredDevices.map(d => d.id)
+      this.selectedDevices = this.selectedDevices.filter(
+        dev => allowedDeviceIds.includes(dev.id)
+      )
+      // Если всё-таки что-то выбрано — загружаем персоны
+      if (this.selectedDevices.length > 0) {
+        this.fetchPersons()
+      } else {
+        // Если очистили, то и список персон тоже очистим
+        this.persons = []
+      }
+    },
+
+    /* Загрузка персон для всех выбранных устройств */
     async fetchPersons() {
       if (!this.selectedDevices.length) {
         this.persons = []
         return
       }
-
       this.isLoading = true
       this.isError = false
       this.errorMessage = ''
-
 
       try {
         const responses = await Promise.all(
@@ -342,8 +311,6 @@ export default {
             axios.get(`/api/devices/${device.id}/persons/`)
           )
         )
-
-        // Сконкатенируем результаты, добавим поля для удобства
         const allPersons = responses.flatMap((res, idx) => {
           const device = this.selectedDevices[idx]
           return res.data.map(person => ({
@@ -351,12 +318,9 @@ export default {
             device_id: device.id,
             device_name: device.name,
             organization_id: device.organization,
-            faceImageData: null, // по умолчанию пусто
+            faceImageData: null
           }))
         })
-
-     
-
         this.persons = allPersons
       } catch (error) {
         this.isError = true
@@ -366,37 +330,13 @@ export default {
       }
     },
 
-
-    // (A) после добавления новой персоны
-    handlePersonCreated() {
-      this.showAddModal = false
-      this.fetchPersons()
+    /* Получить наименование организации по ID */
+    getOrganizationName(orgId) {
+      const org = this.organizations.find(o => o.id === orgId)
+      return org ? org.name : 'N/A'
     },
 
-    openEditModal(person) {
-      const copy = JSON.parse(JSON.stringify(person))
-      copy.hasFaceOnDevice = person.hasFaceOnDevice
-      this.editedPerson = copy
-      this.editModalVisible = true
-    },
-    handlePersonSaved() {
-      this.editModalVisible = false
-      this.fetchPersons()
-    },
-
-    async deletePerson(person) {
-      if (!person.device_id) return
-      try {
-        await axios.delete(
-          `/api/devices/${person.device_id}/persons/${person.employeeNo}/`
-        )
-
-        this.fetchPersons()
-      } catch (error) {
-        console.error('Ошибка при удалении персоны:', error)
-      }
-    },
-
+    /* Загрузка фото (по нажатию "Показать фото") */
     async loadPhoto(person) {
       if (!person.device_id || !person.employeeNo) return
       try {
@@ -417,8 +357,8 @@ export default {
               { params: { face_url: match.faceURL } }
             )
             if (proxyResp.data.image_data) {
-              const fullBase64 = 'data:image/jpeg;base64,' + proxyResp.data.image_data
-              person.faceImageData = fullBase64
+              const base64 = 'data:image/jpeg;base64,' + proxyResp.data.image_data
+              person.faceImageData = base64
               person.hasFaceOnDevice = true
             }
           }
@@ -428,26 +368,54 @@ export default {
       }
     },
 
-
-    // (6) Следим за изменением выбора организаций/устройств с дебаунсом
-    handleSelectionChange() {
-      if (this.selectionChangeTimeout) {
-        clearTimeout(this.selectionChangeTimeout)
+    /* Пагинация */
+    prevPage() {
+      if (this.currentPage > 1) {
+        this.currentPage--
       }
-      this.selectionChangeTimeout = setTimeout(() => {
-        // Сбросим текущую страницу при смене фильтров, если нужно
-        this.currentPage = 1
-        // Удалим из selectedDevices те, которых нет во `filteredDevices`
-        const filtered = this.filteredDevices.map(d => d.id)
-        this.selectedDevices = this.selectedDevices.filter(device =>
-          filtered.includes(device.id)
-        )
-        // Загружаем персоны
-        this.fetchPersons()
-      }, 500)
+    },
+    nextPage() {
+      if (this.currentPage < this.totalPages) {
+        this.currentPage++
+      }
+    },
+    indexOnPage(localIndex) {
+      return (this.currentPage - 1) * this.pageSize + (localIndex + 1)
     },
 
-    // (8) Экспорт Excel (без изменений, кроме того, что используем this.filteredPersons)
+    /* Добавление персоны */
+    handlePersonCreated() {
+      this.showAddModal = false
+      this.fetchPersons()
+    },
+
+    /* Редактирование */
+    openEditModal(person) {
+      // Делаем копию на всякий случай
+      const copy = JSON.parse(JSON.stringify(person))
+      copy.hasFaceOnDevice = person.hasFaceOnDevice
+      this.editedPerson = copy
+      this.editModalVisible = true
+    },
+    handlePersonSaved() {
+      this.editModalVisible = false
+      this.fetchPersons()
+    },
+
+    /* Удаление */
+    async deletePerson(person) {
+      if (!person.device_id) return
+      try {
+        await axios.delete(
+          `/api/devices/${person.device_id}/persons/${person.employeeNo}/`
+        )
+        this.fetchPersons()
+      } catch (error) {
+        console.error('Ошибка при удалении персоны:', error)
+      }
+    },
+
+    /* Экспорт в Excel */
     async downloadAsExcel() {
       try {
         const workbook = new ExcelJS.Workbook()
@@ -466,12 +434,11 @@ export default {
         this.filteredPersons.forEach((person, index) => {
           let plansText = 'Нет планов'
           if (person.RightPlan && person.RightPlan.length > 0) {
-            const planNumbers = person.RightPlan
-              .map(item => item.planTemplateNo)
-              .join(', ')
+            const planNumbers = person.RightPlan.map(item => item.planTemplateNo).join(', ')
             plansText = `[${planNumbers}]`
           }
 
+          // Добавляем строку
           worksheet.addRow([
             this.getOrganizationName(person.organization_id),
             person.device_name,
@@ -479,16 +446,17 @@ export default {
             person.name,
             person.userType,
             plansText,
-            '' // для картинки
+            '' // под картинку
           ])
 
+          // Если есть фото — добавляем
           if (person.faceImageData) {
             const base64Clean = person.faceImageData.split(',')[1]
             const imageId = workbook.addImage({
               base64: base64Clean,
               extension: 'jpeg'
             })
-            const rowNumber = index + 2
+            const rowNumber = index + 2 // с учётом шапки
             const colNumber = 7
             worksheet.addImage(imageId, {
               tl: { col: colNumber - 1, row: rowNumber - 1 },
@@ -503,35 +471,15 @@ export default {
         console.error('Ошибка при экспорте в Excel:', error)
       }
     }
-  },
-  watch: {
-    selectedOrganizations() {
-      // (1) у нас уже есть computed filteredDevices,
-      //     так что vue-select получит новое содержимое
-      // (2) удалим из selectedDevices все устройства, которые не вошли в filteredDevices
-      const filtered = this.filteredDevices.map(d => d.id) // массив ID из отфильтрованных
-      // или, если храните объекты, вам нужно сравнивать device.id
-      this.selectedDevices = this.selectedDevices.filter(
-        device => filtered.includes(device.id)
-      )
-
-      // (3) после обновления выбранных устройств
-      //     можем снова запросить список персон
-      this.fetchPersons()
-    },
-    selectedDevices() {
-      this.fetchPersons()
-    }
   }
 }
 </script>
 
 <style scoped>
-
 .title {
-  font-size: 28px; /* Крупный размер */
+  font-size: 28px;
   font-weight: bold;
-  color: #2c3e50; /* Темно-синий цвет */
+  color: #2c3e50;
   text-align: center;
   text-transform: uppercase;
   letter-spacing: 1px;
@@ -543,17 +491,12 @@ export default {
   display: block;
   width: 80px;
   height: 4px;
-  background: linear-gradient(to right, #42b983, #2c3e50); /* Градиентная линия */
+  background: linear-gradient(to right, #42b983, #2c3e50);
   margin: 8px auto;
   border-radius: 2px;
 }
 
-@media (max-width: 768px) {
-  .title {
-    font-size: 22px; /* Меньше на мобильных */
-  }
-}
-
+/* Кнопка "Добавить" */
 .add-person-btn {
   margin-top: 4rem;
   margin-bottom: 1rem;
@@ -565,11 +508,11 @@ export default {
   border-radius: 5px;
   transition: background 0.3s ease-in-out;
 }
-
 .add-person-btn:hover {
   background-color: #0056b3;
 }
 
+/* Кнопка "Обновить" */
 .refresh-btn {
   margin-top: 4rem;
   margin-bottom: 1rem;
@@ -585,54 +528,15 @@ export default {
   border-radius: 5px;
   transition: background 0.3s ease-in-out;
 }
-
 .refresh-btn:hover {
   background: #218838;
 }
-
 .refresh-btn .icon {
   width: 20px;
   height: 20px;
 }
 
-.person-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin: 1rem 0;
-}
-.person-table th,
-.person-table td {
-  border: 1px solid #ddd;
-  padding: 8px;
-  text-align: left;
-}
-.actions-td {
-  position: relative;
-}
-
-.edit-btn, .delete-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  margin-right: 0.5rem; /* Если нужно отступ между иконками */
-}
-
-.edit-btn {
-  /* какие-то стили для иконки редактирования */
-  margin: 0%;
-  padding: 0%;
-}
-
-.delete-btn {
-  /* какие-то стили для иконки удаления */
-  margin: 0%;
-  padding: 0%;
-  float: right;
-}
-
-
-
-
+/* Таблица */
 .excel-table {
   border-collapse: collapse;
   width: 100%;
@@ -653,38 +557,32 @@ export default {
 .excel-table tr:hover td {
   background-color: #e8f0fe;
 }
+
+/* Действия (Редактировать / Удалить) */
+.actions-td {
+  position: relative;
+}
+.edit-btn,
+.delete-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  margin: 0 0.3rem;
+  padding: 0;
+}
+.delete-btn {
+  float: right;
+}
+
+/* Пагинатор */
 .paginator {
   display: flex;
   gap: 1rem;
   align-items: center;
   margin-top: 1rem;
 }
-.warning-text {
-  color: red;
-  font-size: 0.85rem;
-}
 
-
-
-/* Медиа-запрос для мобильных устройств */
-@media (max-width: 768px) {
-  .excel-table th,
-  .excel-table td {
-    padding: 6px;
-    font-size: 14px;
-  }
-
-  .paginator {
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-
-}
-
-
-
-
-
+/* Фильтр */
 .filter {
   background: #f8f9fa;
   border-radius: 8px;
@@ -694,69 +592,49 @@ export default {
   gap: 16px;
   justify-content: space-between;
   align-items: center;
-  box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1); /* Тень для эффекта карточки */
+  box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
 }
-
-.org-selector,
-.device-selector,
-.iinSearch {
+.filter-item label {
+  font-weight: bold;
+  margin-bottom: 6px;
+}
+.filter-item {
   flex: 1;
   min-width: 200px;
   display: flex;
   flex-direction: column;
 }
-
-.iinSearch label {
-  font-weight: bold;
-  margin-bottom: 6px;
-}
-.org-selector label {
-  font-weight: bold;
-  margin-bottom: 6px;
-}
-.device-selector label {
-  font-weight: bold;
-  margin-bottom: 6px;
-}
-
-.iinSearch input {
+.filter-item input {
   padding: 8px;
   border: 1px solid #ccc;
   border-radius: 6px;
   font-size: 14px;
   transition: all 0.3s ease;
 }
-
-.iinSearch input:focus {
+.filter-item input:focus {
   border-color: #007BFF;
   outline: none;
   box-shadow: 0 0 4px rgba(0, 123, 255, 0.3);
 }
 
-
-.org-selector select,
-.device-selector select {
-  padding: 8px;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  font-size: 14px;
-  transition: all 0.3s ease;
-}
-
-.org-selector select:focus,
-.device-selector select:focus {
-  border-color: #28a745;
-  outline: none;
-  box-shadow: 0 0 4px rgba(40, 167, 69, 0.3);
-}
-
-/* Адаптивность: на мобильных устройствах фильтры идут в колонку */
+/* Адаптивность */
 @media (max-width: 768px) {
+  .title {
+    font-size: 22px;
+  }
   .filter {
     flex-direction: column;
     gap: 12px;
     padding: 12px;
   }
+  .paginator {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .excel-table th,
+  .excel-table td {
+    padding: 6px;
+    font-size: 14px;
+  }
 }
-
 </style>
