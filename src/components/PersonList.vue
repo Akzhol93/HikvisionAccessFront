@@ -23,7 +23,7 @@
           label-prop="name"
           option-key-prop="id"
           :disabled="selectedOrganizations.length === 0"
-          @change="handleSelectionChange"
+          @update:modelValue="handleSelectionChange"
         />
       </div>
 
@@ -311,6 +311,7 @@ export default {
             axios.get(`/api/devices/${device.id}/persons/`)
           )
         )
+        console.log('person data:',responses)
         const allPersons = responses.flatMap((res, idx) => {
           const device = this.selectedDevices[idx]
           return res.data.map(person => ({
