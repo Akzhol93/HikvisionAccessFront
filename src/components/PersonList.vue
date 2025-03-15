@@ -72,6 +72,7 @@
             <th>#</th>
             <th>Организация</th>
             <th>Устройство</th>
+            <th>Класс</th> 
             <th>Фото</th>
             <th>ИИН</th>
             <th>Имя</th>
@@ -89,6 +90,7 @@
             <td>{{ indexOnPage(index) }}</td>
             <td>{{ getOrganizationName(person.organization_id) }}</td>
             <td>{{ person.device_name }}</td>
+            <td>{{ person.belongGroup }}</td>
             <!-- Фото -->
             <td>
               <img
@@ -122,21 +124,26 @@
 
       <!-- Пагинация -->
       <div class="paginator">
-        <button @click="prevPage" :disabled="currentPage === 1">
-          Предыдущая
-        </button>
-        <span>Страница {{ currentPage }} из {{ totalPages }}</span>
-        <button @click="nextPage" :disabled="currentPage === totalPages">
-          Следующая
-        </button>
+        <div class="paginator-line">
+          <label for="pageSize">Кол-во записей на странице:</label>
+          <select v-model="pageSize" id="pageSize">
+            <option :value="50">50</option>
+            <option :value="100">100</option>
+            <option :value="250">250</option>
+            <option :value="500">500</option>
+          </select>
+        </div>
 
-        <label for="pageSize">Кол-во записей на странице:</label>
-        <select v-model="pageSize" id="pageSize">
-          <option :value="50">50</option>
-          <option :value="100">100</option>
-          <option :value="250">250</option>
-          <option :value="500">500</option>
-        </select>
+        <!-- Первая строка: кнопки и номер страницы -->
+        <div class="paginator-line">
+          <button @click="prevPage" :disabled="currentPage === 1">
+            Предыдущая
+          </button>
+          <span>Страница {{ currentPage }} из {{ totalPages }}</span>
+          <button @click="nextPage" :disabled="currentPage === totalPages">
+            Следующая
+          </button>
+        </div>
       </div>
     </div>
 
@@ -425,6 +432,7 @@ export default {
         worksheet.addRow([
           'Organization',
           'Device',
+          'Group',
           'IIN',
           'Name',
           'Тип пользователя',
@@ -443,6 +451,7 @@ export default {
           worksheet.addRow([
             this.getOrganizationName(person.organization_id),
             person.device_name,
+            person.belongGroup || '', 
             person.employeeNo,
             person.name,
             person.userType,
@@ -575,12 +584,21 @@ export default {
   float: right;
 }
 
-/* Пагинатор */
 .paginator {
+
   display: flex;
-  gap: 1rem;
-  align-items: center;
+  flex-direction: column;
+  align-items: center; /* Горизонтальное выравнивание по центру */
+  gap: 0.5rem;
+  margin-top: 5rem;
+}
+
+.paginator-line {
   margin-top: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem; /* Расстояние между элементами в строке */
 }
 
 /* Фильтр */

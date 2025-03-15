@@ -4,6 +4,11 @@
       <h3>Редактировать пользователя</h3>
       <form @submit.prevent="onSave">
 
+        <div class="form-row">
+          <label>Класс:</label>
+          <input v-model="localPerson.belongGroup" />
+        </div>
+
         <!-- ИИН -->
         <div class="form-row">
           <label>ИИН:</label>

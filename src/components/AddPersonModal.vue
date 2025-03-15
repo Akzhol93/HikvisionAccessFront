@@ -54,6 +54,11 @@
         </div>
 
         <div class="form-row">
+          <label>Класс:</label>
+          <input v-model="form.belongGroup" />
+        </div>
+
+        <div class="form-row">
           <label>ИИН:</label>
           <input v-model="form.employeeNo" required />
         </div>
@@ -142,6 +147,7 @@ export default {
       selectedDeviceId: '',
 
       form: {
+        belongGroup: '',
         employeeNo: '',
         name: '',
         userType: 'normal',
